@@ -9,7 +9,7 @@
             {{ batch.status === 'available' ? '在售' : '已全部售出' }}
           </el-tag>
           <div class="seller-info">
-            <el-avatar :size="24" :src="batch.user?.avatar">
+            <el-avatar :size="24" >
               {{ batch.user?.username?.charAt(0) }}
             </el-avatar>
             <span class="seller-name">{{ batch.user?.username }}</span>

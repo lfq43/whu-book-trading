@@ -15,9 +15,12 @@ export const getConversationList = () => {
     return request.get('/messages/conversations')
 }
 
-// 获取与某人的聊天记录
-export const getConversation = (userId, page = 1, pageSize = 50) => {
-    return request.get(`/messages/conversation/${userId}`, {
-        params: { page, page_size: pageSize }
-    })
+// 获取与某人的聊天记录（滑动加载）
+// beforeId: 查询比这个ID更旧的消息，传0或不传表示获取最新消息
+export const getConversation = (userId, beforeId = 0, limit = 20) => {
+    const params = { limit }
+    if (beforeId > 0) {
+        params.before_id = beforeId
+    }
+    return request.get(`/messages/conversation/${userId}`, { params })
 }

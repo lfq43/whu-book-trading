@@ -26,7 +26,7 @@ func InitMySQL() {
 
 	// 自动迁移 - 根据模型结构创建或更新表
 	// 这会自动创建 users 表（如果不存在）
-	err = DB.AutoMigrate(&models.User{}, &models.Batch{}, &models.Message{})
+	err = DB.AutoMigrate(&models.User{}, &models.Batch{}, &models.Message{}, &models.Conversation{})
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)
 	}

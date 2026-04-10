@@ -1,9 +1,9 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"book-trading/backend/internal/database"
 	"book-trading/backend/internal/models"
@@ -27,7 +27,6 @@ func SendMessage(c *gin.Context) {
 		return
 	}
 
-	// 获取当前登录用户ID
 	fromUserID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, models.Response{
@@ -38,7 +37,6 @@ func SendMessage(c *gin.Context) {
 		return
 	}
 
-	// 不能给自己发消息
 	if fromUserID.(uint) == req.ToUserID {
 		c.JSON(http.StatusBadRequest, models.Response{
 			Code:    400,
@@ -76,6 +74,12 @@ func SendMessage(c *gin.Context) {
 		return
 	}
 
+	// 更新或创建对话记录（发送者视角）
+	updateConversation(fromUserID.(uint), req.ToUserID, req.Content, false)
+
+	// 更新或创建对话记录（接收者视角，增加未读计数）
+	updateConversation(req.ToUserID, fromUserID.(uint), req.Content, true)
+
 	// 预加载发送者信息
 	database.DB.Preload("FromUser").First(&message, message.ID)
 
@@ -86,9 +90,44 @@ func SendMessage(c *gin.Context) {
 	})
 }
 
-// GetConversation 获取与某个用户的聊天记录
+// updateConversation 更新对话记录
+func updateConversation(userID, otherUserID uint, lastMessage string, incrementUnread bool) {
+	var conv models.Conversation
+
+	// 查找是否存在对话记录
+	result := database.DB.Where("user_id = ? AND other_user_id = ?", userID, otherUserID).First(&conv)
+
+	if result.Error != nil {
+		// 不存在，创建新记录
+		conv = models.Conversation{
+			UserID:      userID,
+			OtherUserID: otherUserID,
+			LastMessage: lastMessage,
+			LastTime:    database.DB.NowFunc(),
+			UnreadCount: 0,
+		}
+		if incrementUnread {
+			conv.UnreadCount = 1
+		}
+		database.DB.Create(&conv)
+	} else {
+		// 存在，更新记录
+		fmt.Println("更新对话记录")
+		updates := map[string]interface{}{
+			"last_message": lastMessage,
+			"last_time":    database.DB.NowFunc(),
+		}
+		if incrementUnread {
+			updates["unread_count"] = conv.UnreadCount + 1
+		} else {
+			updates["unread_count"] = 0 // 发送者视角，未读数为0
+		}
+		database.DB.Model(&conv).Updates(updates)
+	}
+}
+
+// GetConversation 获取与某个用户的聊天记录（滑动加载）
 func GetConversation(c *gin.Context) {
-	// 获取对方用户ID
 	otherUserIDStr := c.Param("userId")
 	otherUserID, err := strconv.ParseUint(otherUserIDStr, 10, 32)
 	if err != nil {
@@ -100,7 +139,6 @@ func GetConversation(c *gin.Context) {
 		return
 	}
 
-	// 获取当前用户ID
 	currentUserID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, models.Response{
@@ -111,56 +149,136 @@ func GetConversation(c *gin.Context) {
 		return
 	}
 
-	// 分页参数
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
-	if page < 1 {
-		page = 1
+	// 游标分页参数
+	// before_id: 查询比这个ID更旧的消息（用于加载更多）
+	// limit: 每页数量
+	beforeIDStr := c.Query("before_id")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	if limit < 1 {
+		limit = 20
 	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 50
+	if limit > 50 {
+		limit = 50 // 限制最大50条
 	}
 
-	// 查询聊天记录（双方之间的所有消息）
-	var messages []models.Message
-	offset := (page - 1) * pageSize
-
+	// 构建查询
 	query := database.DB.Where(
 		"(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)",
 		currentUserID, otherUserID,
 		otherUserID, currentUserID,
-	).Order("created_at DESC")
+	)
 
-	// 统计总数
-	var total int64
-	query.Count(&total)
+	// 如果提供了 before_id，查询更旧的消息
+	if beforeIDStr != "" {
+		beforeID, err := strconv.ParseUint(beforeIDStr, 10, 32)
+		if err == nil {
+			query = query.Where("id < ?", beforeID)
+		}
+	}
 
-	// 分页查询
-	query.Offset(offset).Limit(pageSize).Preload("FromUser").Find(&messages)
+	// 查询消息（按 ID 倒序，最新的在前面）
+	var messages []models.Message
+	err = query.Order("id DESC").
+		Limit(limit).
+		Preload("FromUser").
+		Find(&messages).Error
 
-	// 将消息按时间正序返回（方便前端显示）
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Code:    500,
+			Message: "查询失败: " + err.Error(),
+			Data:    nil,
+		})
+		return
+	}
+
+	// 判断是否还有更多
+	hasMore := len(messages) == limit
+
+	// 将消息按时间正序返回（方便前端显示，最早的在前）
 	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
 		messages[i], messages[j] = messages[j], messages[i]
 	}
 
-	// 标记所有收到的消息为已读
+	// 获取第一条消息的ID（用于下次加载更多）
+	var nextBeforeID uint = 0
+	if len(messages) > 0 {
+		nextBeforeID = messages[0].ID
+	}
+
+	// 将该对话中所有未读消息标记为已读
 	database.DB.Model(&models.Message{}).
 		Where("to_user_id = ? AND from_user_id = ? AND is_read = ?", currentUserID, otherUserID, false).
 		Update("is_read", true)
+
+	// 重置该对话的未读计数
+	database.DB.Model(&models.Conversation{}).
+		Where("user_id = ? AND other_user_id = ?", currentUserID, otherUserID).
+		Update("unread_count", 0)
 
 	c.JSON(http.StatusOK, models.Response{
 		Code:    0,
 		Message: "success",
 		Data: gin.H{
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-			"messages":  messages,
+			"messages":       messages,
+			"has_more":       hasMore,
+			"next_before_id": nextBeforeID,
 		},
 	})
 }
 
-// GetUnreadCount 获取未读消息总数
+// GetConversationList 获取对话列表（简单查询）
+func GetConversationList(c *gin.Context) {
+	currentUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, models.Response{
+			Code:    401,
+			Message: "请先登录",
+			Data:    nil,
+		})
+		return
+	}
+
+	var conversations []models.Conversation
+
+	// 简单查询：获取当前用户的所有对话，按最后消息时间倒序
+	err := database.DB.
+		Where("user_id = ?", currentUserID).
+		Preload("OtherUser").
+		Order("last_time DESC").
+		Find(&conversations).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Code:    500,
+			Message: "查询失败",
+			Data:    nil,
+		})
+		return
+	}
+
+	// 转换格式，方便前端使用
+	result := make([]gin.H, 0, len(conversations))
+	for _, conv := range conversations {
+		result = append(result, gin.H{
+			"user_id":      conv.OtherUserID,
+			"username":     conv.OtherUser.Username,
+			"avatar":       conv.OtherUser.Avatar,
+			"last_message": conv.LastMessage,
+			"last_time":    conv.LastTime,
+			"unread_count": conv.UnreadCount,
+		})
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Code:    0,
+		Message: "success",
+		Data:    result,
+	})
+}
+
+// GetUnreadCount 获取总未读消息数
 func GetUnreadCount(c *gin.Context) {
 	currentUserID, exists := c.Get("userID")
 	if !exists {
@@ -172,60 +290,15 @@ func GetUnreadCount(c *gin.Context) {
 		return
 	}
 
-	var count int64
-	database.DB.Model(&models.Message{}).
-		Where("to_user_id = ? AND is_read = ?", currentUserID, false).
-		Count(&count)
+	var totalUnread int64
+	database.DB.Model(&models.Conversation{}).
+		Where("user_id = ?", currentUserID).
+		Select("COALESCE(SUM(unread_count), 0)").
+		Scan(&totalUnread)
 
 	c.JSON(http.StatusOK, models.Response{
 		Code:    0,
 		Message: "success",
-		Data:    count,
+		Data:    totalUnread,
 	})
-}
-
-// GetConversationList 获取对话列表（所有聊过天的人）
-func GetConversationList(c *gin.Context) {
-	currentUserID, _ := c.Get("userID")
-
-	// 1. 获取所有对话过的用户ID及最后消息时间
-	var conversations []struct {
-		UserID      uint
-		LastMessage string
-		LastTime    time.Time
-	}
-
-	// 使用 GORM 的子查询
-	subQuery := database.DB.Model(&models.Message{}).
-		Select("CASE WHEN from_user_id = ? THEN to_user_id ELSE from_user_id END as user_id, MAX(created_at) as last_time", currentUserID).
-		Where("from_user_id = ? OR to_user_id = ?", currentUserID, currentUserID).
-		Group("user_id")
-
-	database.DB.Table("(?) as latest", subQuery).
-		Select("latest.user_id, m.content as last_message, latest.last_time").
-		Joins("LEFT JOIN messages m ON (m.from_user_id = ? AND m.to_user_id = latest.user_id AND m.created_at = latest.last_time) OR (m.from_user_id = latest.user_id AND m.to_user_id = ? AND m.created_at = latest.last_time)", currentUserID, currentUserID).
-		Scan(&conversations)
-
-	// 2. 组装返回数据（循环添加用户信息和未读数）
-	var result []gin.H
-	for _, conv := range conversations {
-		var user models.User
-		database.DB.First(&user, conv.UserID)
-
-		var unreadCount int64
-		database.DB.Model(&models.Message{}).
-			Where("from_user_id = ? AND to_user_id = ? AND is_read = ?", conv.UserID, currentUserID, false).
-			Count(&unreadCount)
-
-		result = append(result, gin.H{
-			"user_id":      conv.UserID,
-			"username":     user.Username,
-			"avatar":       user.Avatar,
-			"last_message": conv.LastMessage,
-			"last_time":    conv.LastTime,
-			"unread_count": unreadCount,
-		})
-	}
-
-	c.JSON(200, result)
 }
