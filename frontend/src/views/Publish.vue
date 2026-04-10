@@ -52,7 +52,8 @@
         </el-form-item>
 
         <el-form-item label="图片">
-          <el-input v-model="form.image" placeholder="图片URL（可选）" />
+          <ImageUploader v-model="form.image" />
+          <div class="form-tip">支持 JPG、PNG、GIF 格式，大小不超过 5MB</div>
         </el-form-item>
 
         <el-form-item label="联系方式" prop="contact">
@@ -96,6 +97,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete } from '@element-plus/icons-vue'
 import { createBatch } from '../api/batch'
+import ImageUploader from "../components/ImageUploader.vue";
 
 const router = useRouter()
 const formRef = ref(null)

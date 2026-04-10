@@ -5,24 +5,22 @@
       <div class="detail-header">
         <h1>{{ batch.title }}</h1>
         <div class="meta">
-          <el-tag :type="batch.status === 'available' ? 'success' : 'info'">
-            {{ batch.status === 'available' ? '在售' : '已全部售出' }}
+          <el-tag :type="getStatusType(batch.status)">
+            {{ getStatusText(batch.status) }}
           </el-tag>
           <div class="seller-info">
-            <el-avatar :size="24" >
+            <el-avatar :size="24" :src="batch.user?.avatar">
               {{ batch.user?.username?.charAt(0) }}
             </el-avatar>
             <span class="seller-name">{{ batch.user?.username }}</span>
-            <!-- 聊天按钮：不能给自己发消息 -->
             <el-button
                 v-if="batch.user_id !== currentUserId"
                 type="primary"
                 size="small"
                 circle
-                :style="{ width: '24px', height: '24px' }"
                 @click="openChat"
             >
-              <el-icon :size="20"><ChatDotRound /></el-icon>
+              <el-icon><ChatDotRound /></el-icon>
             </el-button>
           </div>
           <span>📅 {{ formatDate(batch.created_at) }}</span>
@@ -34,31 +32,61 @@
         <el-image :src="batch.image" fit="contain" style="max-height: 300px" />
       </div>
 
-      <!-- 书籍列表（带勾选框，仅自己可见编辑功能） -->
-      <div class="book-list-section">
-        <h3>📚 书籍列表（{{ bookNames.length }}本）</h3>
+      <!-- 未售出书籍列表 -->
+      <div class="book-list-section" v-if="bookNames.length > 0">
+        <h3>📚 在售书籍（{{ bookNames.length }}本）</h3>
         <div class="book-list">
           <div
               v-for="(name, index) in bookNames"
               :key="index"
               class="book-item"
-              :class="{ sold: soldStatus[index] }"
           >
             <div class="book-name">
               <span class="book-index">{{ index + 1 }}.</span>
-              <span :class="{ 'strikethrough': soldStatus[index] }">{{ name }}</span>
+              <span>{{ name }}</span>
             </div>
             <!-- 只有发布者本人可以看到勾选框 -->
             <el-checkbox
                 v-if="isOwner"
-                v-model="soldStatus[index]"
-                @change="toggleSoldStatus(index, $event)"
+                :model-value="false"
+                @change="toggleSoldStatus(name, true)"
             >
-              {{ soldStatus[index] ? '已售出' : '标记售出' }}
+              标记售出
             </el-checkbox>
-            <el-tag v-else-if="soldStatus[index]" type="success" size="small">已售出</el-tag>
           </div>
         </div>
+      </div>
+
+      <!-- 已售出书籍列表 -->
+      <div class="book-list-section" v-if="soldBookNames.length > 0">
+        <h3>✅ 已售出（{{ soldBookNames.length }}本）</h3>
+        <div class="book-list sold-list">
+          <div
+              v-for="(name, index) in soldBookNames"
+              :key="index"
+              class="book-item sold-item"
+          >
+            <div class="book-name">
+              <span class="book-index">{{ index + 1 }}.</span>
+              <span class="strikethrough">{{ name }}</span>
+            </div>
+            <!-- 只有发布者本人可以看到取消按钮 -->
+            <el-button
+                v-if="isOwner"
+                type="warning"
+                size="small"
+                plain
+                @click="toggleSoldStatus(name, false)"
+            >
+              取消售出
+            </el-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 空状态 -->
+      <div v-if="bookNames.length === 0 && soldBookNames.length === 0" class="empty-books">
+        <el-empty description="暂无书籍" />
       </div>
 
       <!-- 描述 -->
@@ -72,24 +100,17 @@
         <h3>📞 联系方式</h3>
         <div class="contact-box">
           <span class="contact-value">{{ batch.contact }}</span>
-          <el-button
-              type="primary"
-              size="small"
-              @click="copyContact"
-          >
+          <el-button type="primary" size="small" @click="copyContact">
             复制
           </el-button>
         </div>
-        <p class="contact-tip">点击复制后，打开微信/QQ 添加好友</p>
       </div>
 
-      <!-- 删除按钮（仅自己可见） -->
+      <!-- 删除按钮 -->
       <div v-if="isOwner" class="actions">
         <el-button type="danger" @click="handleDelete">删除这个发布</el-button>
       </div>
     </div>
-
-    <el-empty v-else-if="!loading" description="批次不存在" />
 
     <!-- 聊天窗口 -->
     <ChatWindow
@@ -113,30 +134,56 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const currentUserId = computed(() => userStore.userInfo?.id)
-const chatVisible = ref(false)
-
 const loading = ref(false)
 const batch = ref(null)
+const chatVisible = ref(false)
 
-// 解析 JSON 数组
+const currentUserId = computed(() => userStore.userInfo?.id)
+const isOwner = computed(() => batch.value?.user_id === currentUserId.value)
+
+// 解析未售出书籍列表
 const bookNames = computed(() => {
   if (!batch.value?.book_names) return []
   try {
-    return typeof batch.value.book_names === 'string'
+    const names = typeof batch.value.book_names === 'string'
         ? JSON.parse(batch.value.book_names)
         : batch.value.book_names
+    return names || []
   } catch {
     return []
   }
 })
 
-const soldStatus = ref([])
-
-// 是否当前用户发布的
-const isOwner = computed(() => {
-  return userStore.userInfo?.id === batch.value?.user_id
+// 解析已售出书籍列表
+const soldBookNames = computed(() => {
+  if (!batch.value?.sold_book_names) return []
+  try {
+    const names = typeof batch.value.sold_book_names === 'string'
+        ? JSON.parse(batch.value.sold_book_names)
+        : batch.value.sold_book_names
+    return names || []
+  } catch {
+    return []
+  }
 })
+
+const getStatusText = (status) => {
+  const map = {
+    'available': '在售',
+    'partial': '部分售出',
+    'sold': '已售完'
+  }
+  return map[status] || '在售'
+}
+
+const getStatusType = (status) => {
+  const map = {
+    'available': 'success',
+    'partial': 'warning',
+    'sold': 'info'
+  }
+  return map[status] || 'success'
+}
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -151,13 +198,6 @@ const loadDetail = async () => {
   try {
     const response = await getBatchDetail(id)
     batch.value = response.data
-
-    // 解析售出状态
-    let status = batch.value.sold_status
-    if (typeof status === 'string') {
-      status = JSON.parse(status)
-    }
-    soldStatus.value = status || new Array(bookNames.value.length).fill(false)
   } catch (error) {
     ElMessage.error('加载失败')
   } finally {
@@ -166,16 +206,13 @@ const loadDetail = async () => {
 }
 
 // 切换售出状态
-const toggleSoldStatus = async (index, sold) => {
+const toggleSoldStatus = async (bookName, sold) => {
   try {
-    await updateBookSoldStatus(batch.value.id, index, sold)
+    await updateBookSoldStatus(batch.value.id, bookName, sold)
     ElMessage.success(sold ? '已标记为售出' : '已取消售出标记')
-    // 刷新整体状态
-    await loadDetail()
+    await loadDetail() // 刷新页面
   } catch (error) {
     ElMessage.error('操作失败')
-    // 恢复勾选状态
-    soldStatus.value[index] = !sold
   }
 }
 
@@ -204,11 +241,7 @@ const handleDelete = async () => {
   }
 }
 
-onMounted(() => {
-  loadDetail()
-})
-
-// 打开聊天窗口
+// 打开聊天
 const openChat = () => {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录')
@@ -218,9 +251,11 @@ const openChat = () => {
   chatVisible.value = true
 }
 
-const onMessageSent = () => {
-  // 消息发送后可以刷新未读数量等
-}
+const onMessageSent = () => {}
+
+onMounted(() => {
+  loadDetail()
+})
 </script>
 
 <style scoped>
@@ -352,5 +387,22 @@ const onMessageSent = () => {
   display: flex;
   align-items: center;
   gap: 12px;  /* 统一设置所有子元素之间的间距 */
+}
+
+.sold-list {
+  background: #fafafa;
+}
+
+.sold-item {
+  opacity: 0.7;
+}
+
+.strikethrough {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.empty-books {
+  padding: 40px 0;
 }
 </style>

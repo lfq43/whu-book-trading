@@ -5,7 +5,7 @@ export const createBatch = (data) => {
     return request.post('/batches', data)
 }
 
-// 获取公开批次列表
+// 获取公开批次列表（只显示有未售出书籍的）
 export const getBatchList = (params) => {
     return request.get('/batches', { params })
 }
@@ -15,15 +15,15 @@ export const getBatchDetail = (id) => {
     return request.get(`/batches/${id}`)
 }
 
-// 获取我的批次
+// 获取我的批次（全部）
 export const getMyBatches = () => {
     return request.get('/user/batches')
 }
 
-// 更新单本书售出状态
-export const updateBookSoldStatus = (batchId, bookIndex, sold) => {
+// 更新单本书售出状态（传入书名）
+export const updateBookSoldStatus = (batchId, bookName, sold) => {
     return request.put(`/batches/${batchId}/book-status`, {
-        book_index: bookIndex,
+        book_name: bookName,
         sold: sold
     })
 }

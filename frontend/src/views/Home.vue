@@ -61,10 +61,12 @@
                   v-for="(name, idx) in getBookNames(batch)"
                   :key="idx"
                   class="book-tag"
-                  :class="{ 'book-sold': isBookSold(batch, idx) }"
               >
                 {{ name }}
-                <span v-if="isBookSold(batch, idx)" class="sold-mark">✓</span>
+              </div>
+              <!-- 显示已售出数量 -->
+              <div v-if="getSoldBookNames(batch).length > 0" class="sold-count">
+                等{{ batch.book_count || getBookNames(batch).length + getSoldBookNames(batch).length }}本（已售{{ getSoldBookNames(batch).length }}）
               </div>
             </div>
 
@@ -144,23 +146,16 @@ const getBookNames = (batch) => {
   }
 }
 
-// 解析售出状态
-const getSoldStatus = (batch) => {
-  if (!batch.sold_status) return []
+// 解析已售出书籍列表
+const getSoldBookNames = (batch) => {
+  if (!batch.sold_book_names) return []
   try {
-    const status = typeof batch.sold_status === 'string'
-        ? JSON.parse(batch.sold_status)
-        : batch.sold_status
-    return status || []
+    return typeof batch.sold_book_names === 'string'
+        ? JSON.parse(batch.sold_book_names)
+        : batch.sold_book_names
   } catch {
     return []
   }
-}
-
-// 判断某本书是否已售出
-const isBookSold = (batch, index) => {
-  const soldStatus = getSoldStatus(batch)
-  return soldStatus[index] === true
 }
 
 // 状态文本

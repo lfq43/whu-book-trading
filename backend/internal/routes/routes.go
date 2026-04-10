@@ -48,6 +48,12 @@ func SetupRoutes(r *gin.Engine) {
 				message.GET("/conversations", controllers.GetConversationList)    // 对话列表
 				message.GET("/conversation/:userId", controllers.GetConversation) // 与某人的聊天记录
 			}
+
+			// 上传相关
+			upload := protected.Group("/upload")
+			{
+				upload.POST("/image", controllers.UploadImage)
+			}
 		}
 	}
 }

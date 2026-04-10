@@ -24,6 +24,9 @@ func main() {
 	// 设置路由
 	routes.SetupRoutes(r)
 
+	// 配置静态文件服务（用于访问上传的图片）
+	r.Static("/uploads", "./uploads")
+
 	// 健康检查（公开接口）
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
