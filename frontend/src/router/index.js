@@ -6,6 +6,7 @@ import Publish from '../views/Publish.vue'
 import MyBatches from '../views/MyBatches.vue'
 import { useUserStore } from '../stores/user'
 import BatchDetail from "../views/BatchDetail.vue";
+import UserSpace from "../views/UserSpace.vue";
 
 const routes = [
     { path: '/', name: 'Home', component: Home },
@@ -17,6 +18,11 @@ const routes = [
         path: '/batch/:id',
         name: 'BatchDetail',
         component: BatchDetail
+    },
+    {
+        path: '/user/:id',
+        name: 'UserSpace',
+        component: UserSpace
     },
 ]
 

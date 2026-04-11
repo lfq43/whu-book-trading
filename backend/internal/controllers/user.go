@@ -166,3 +166,132 @@ func GetProfile(c *gin.Context) {
 		Data:    user,
 	})
 }
+
+// GetUserProfile 获取指定用户的公开信息（用于个人空间）
+func GetUserProfile(c *gin.Context) {
+	userIDStr := c.Param("id")
+	var userID uint
+	if _, ok := c.Params.Get("id"); ok {
+		// 解析用户ID
+		userID = parseUint(userIDStr)
+	}
+
+	if userID == 0 {
+		c.JSON(http.StatusBadRequest, models.Response{
+			Code:    400,
+			Message: "无效的用户ID",
+			Data:    nil,
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.Response{
+			Code:    404,
+			Message: "用户不存在",
+			Data:    nil,
+		})
+		return
+	}
+
+	// 获取用户发布的批次
+	var batches []models.Batch
+	database.DB.Where("user_id = ?", userID).Order("created_at DESC").Find(&batches)
+
+	c.JSON(http.StatusOK, models.Response{
+		Code:    0,
+		Message: "success",
+		Data: gin.H{
+			"user":    user,
+			"batches": batches,
+		},
+	})
+}
+
+// UpdateProfile 更新用户信息
+func UpdateProfile(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"omitempty,min=2,max=50"`
+		Avatar   string `json:"avatar" binding:"omitempty"`
+		Email    string `json:"email" binding:"omitempty,email"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.Response{
+			Code:    400,
+			Message: "参数错误: " + err.Error(),
+			Data:    nil,
+		})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, models.Response{
+			Code:    401,
+			Message: "未认证",
+			Data:    nil,
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.Response{
+			Code:    404,
+			Message: "用户不存在",
+			Data:    nil,
+		})
+		return
+	}
+
+	// 如果要修改用户名，检查是否已被使用
+	if req.Username != "" && req.Username != user.Username {
+		var existingUser models.User
+		if err := database.DB.Where("username = ? AND id != ?", req.Username, userID).First(&existingUser).Error; err == nil {
+			c.JSON(http.StatusConflict, models.Response{
+				Code:    409,
+				Message: "用户名已被占用",
+				Data:    nil,
+			})
+			return
+		}
+		user.Username = req.Username
+	}
+
+	if req.Avatar != "" {
+		user.Avatar = req.Avatar
+	}
+
+	if req.Email != "" {
+		user.Email = req.Email
+	}
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Code:    500,
+			Message: "更新失败: " + err.Error(),
+			Data:    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Code:    0,
+		Message: "更新成功",
+		Data:    user,
+	})
+}
+
+// 辅助函数：解析 uint
+func parseUint(s string) uint {
+	var result uint
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0
+		}
+		result = result*10 + uint(c-'0')
+	}
+	return result
+}

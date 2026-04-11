@@ -54,3 +54,6 @@ go.work.sum
 # Vue build files
 /dist
 /.vite
+
+*.png
+*.jpg

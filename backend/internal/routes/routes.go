@@ -17,6 +17,9 @@ func SetupRoutes(r *gin.Engine) {
 			auth.POST("/login", controllers.Login)
 		}
 
+		// 用户公开路由（查看个人空间）
+		api.GET("/users/:id", controllers.GetUserProfile)
+
 		// 批次公开路由
 		api.GET("/batches", controllers.GetBatchList)
 		api.GET("/batches/:id", controllers.GetBatchDetail)
@@ -29,6 +32,7 @@ func SetupRoutes(r *gin.Engine) {
 			user := protected.Group("/user")
 			{
 				user.GET("/profile", controllers.GetProfile)
+				user.PUT("/profile", controllers.UpdateProfile)
 				user.GET("/batches", controllers.GetMyBatches)
 			}
 
@@ -53,6 +57,7 @@ func SetupRoutes(r *gin.Engine) {
 			// 文件相关
 			upload := protected.Group("/upload")
 			{
+				upload.POST("/avatar", controllers.UploadAvatar)
 				upload.POST("/image", controllers.UploadImage)
 			}
 		}

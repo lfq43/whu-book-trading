@@ -59,11 +59,9 @@
               >
                 {{ name }}
               </div>
-              <!-- 显示已售出数量 -->
-              <div v-if="getSoldBookNames(batch).length > 0" class="sold-count">
-                等{{ batch.book_count || getBookNames(batch).length + getSoldBookNames(batch).length }}本（已售{{ getSoldBookNames(batch).length }}）
-              </div>
             </div>
+
+            <div class="info">{{ batch.description }}</div>
 
             <!-- 底部信息 -->
             <div class="batch-footer">

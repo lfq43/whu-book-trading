@@ -96,4 +96,14 @@ export const getProfile = () => {
     return request.get('/user/profile')
 }
 
+// 获取指定用户的公开信息（用于个人空间）
+export const getUserProfile = (userId) => {
+    return request.get(`/users/${userId}`)
+}
+
+// 更新个人资料
+export const updateProfile = (data) => {
+    return request.put('/user/profile', data)
+}
+
 export default request

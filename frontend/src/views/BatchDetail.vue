@@ -9,12 +9,12 @@
             {{ getStatusText(batch.status) }}
           </el-tag>
           <div class="seller-info">
-            <el-avatar :size="24" :src="batch.user?.avatar">
+            <el-avatar :size="32" :src="batch.user?.avatar">
               {{ batch.user?.username?.charAt(0) }}
             </el-avatar>
-            <span class="seller-name">{{ batch.user?.username }}</span>
+            <span class="seller-name" @click="goToUserSpace">{{ batch.user?.username }}</span>
             <el-button
-                v-if="batch.value?.user_id !== currentUserId"
+                v-if="batch.user_id !== currentUserId"
                 type="primary"
                 size="small"
                 circle
@@ -159,6 +159,10 @@ const bookNames = computed(() => {
     return []
   }
 })
+
+const goToUserSpace = () => {
+  router.push(`/user/${batch.value.user_id}`)
+}
 
 // 解析已售出书籍列表
 const soldBookNames = computed(() => {
@@ -337,6 +341,15 @@ onMounted(() => {
 .book-index {
   color: #999;
   margin-right: 8px;
+}
+
+.seller-name {
+  cursor: pointer;
+  color: #409eff;
+}
+
+.seller-name:hover {
+  text-decoration: underline;
 }
 
 .strikethrough {

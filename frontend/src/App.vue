@@ -17,10 +17,24 @@
             </el-badge>
           </div>
 
-          <template v-if="userStore.isLoggedIn">
-            <span class="user-info">{{ userStore.userInfo?.username }}</span>
-            <el-button link @click="handleLogout">退出</el-button>
-          </template>
+          <!-- 个人空间入口 -->
+          <div v-if="userStore.isLoggedIn" class="user-menu">
+            <el-dropdown @command="handleMenuCommand">
+              <div class="user-info">
+                <el-avatar :size="28" :src="userStore.userInfo?.avatar">
+                  {{ userStore.userInfo?.username?.charAt(0) }}
+                </el-avatar>
+                <span>{{ userStore.userInfo?.username }}</span>
+                <el-icon><ArrowDown /></el-icon>
+              </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="space">个人空间</el-dropdown-item>
+                  <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
           <router-link v-else to="/login">登录/注册</router-link>
         </div>
       </div>
@@ -43,7 +57,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ChatDotRound } from '@element-plus/icons-vue'
+import {ArrowDown, ChatDotRound} from '@element-plus/icons-vue'
 import { useUserStore } from './stores/user'
 import { useNotification } from './composables/useNotification'
 import MessageList from './components/MessageList.vue'
@@ -81,10 +95,14 @@ const onMessageSent = () => {
   checkUnread()
 }
 
-const handleLogout = () => {
-  userStore.logout()
-  ElMessage.success('已退出登录')
-  router.push('/login')
+const handleMenuCommand = (command) => {
+  if (command === 'space') {
+    router.push(`/user/${userStore.userInfo?.id}`)
+  } else if (command === 'logout') {
+    userStore.logout()
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  }
 }
 </script>
 
@@ -98,6 +116,32 @@ const handleLogout = () => {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #f5f5f5;
+}
+
+.user-menu {
+  cursor: pointer;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+
+.user-info:hover {
+  background: #f0f0f0;
+}
+
+.seller-name {
+  cursor: pointer;
+  color: #409eff;
+}
+
+.seller-name:hover {
+  text-decoration: underline;
 }
 
 .navbar {

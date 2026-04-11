@@ -19,9 +19,6 @@
         <div class="batch-info">
           <div class="batch-header">
             <h3>{{ batch.title }}</h3>
-            <el-tag :type="batch.status === 'available' ? 'success' : 'info'" size="small">
-              {{ batch.status === 'available' ? '在售' : '已全部售出' }}
-            </el-tag>
           </div>
 
           <!-- 书籍列表预览 -->

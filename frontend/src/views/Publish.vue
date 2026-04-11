@@ -8,7 +8,7 @@
     <el-card class="publish-card">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="批次标题" prop="title">
-          <el-input v-model="form.title" placeholder="例如：大学教材5本、考研资料一堆" />
+          <el-input v-model="form.title" placeholder="默认: 出书出书" />
         </el-form-item>
 
         <!-- 动态书名列表 -->
@@ -113,7 +113,7 @@ const submitting = ref(false)
 const batchId = ref(null)  // 存储创建后的批次ID
 
 const form = reactive({
-  title: '',
+  title: '出书出书',
   book_names: ['', ''],
   description: '',
   image: '',
