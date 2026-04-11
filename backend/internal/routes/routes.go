@@ -54,6 +54,14 @@ func SetupRoutes(r *gin.Engine) {
 				message.GET("/conversation/:userId", controllers.GetConversation) // 与某人的聊天记录
 			}
 
+			// 管理员相关
+			admin := protected.Group("/admin")
+			admin.Use(middleware.AdminMiddleware())
+			{
+				admin.GET("/users", controllers.GetAllUsers)
+				admin.PUT("/users/:id/ban", controllers.BanUser)
+			}
+
 			// 文件相关
 			upload := protected.Group("/upload")
 			{

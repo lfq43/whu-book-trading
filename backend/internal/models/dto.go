@@ -4,14 +4,15 @@ package models
 
 // RegisterRequest 注册请求
 type RegisterRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=50"` // 必填，3-50字符
+	Account  string `json:"account" binding:"required,min=3,max=50"`  // 必填，账号名，3-50字符
+	Username string `json:"username" binding:"required,min=3,max=50"` // 必填，显示用户名，3-50字符
 	Password string `json:"password" binding:"required,min=6"`        // 必填，至少6位
 	Email    string `json:"email" binding:"omitempty,email"`          // 可选，但如果填了必须是邮箱格式
 }
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
+	Account  string `json:"account" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 

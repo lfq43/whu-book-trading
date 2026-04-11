@@ -101,6 +101,16 @@ export const getUserProfile = (userId) => {
     return request.get(`/users/${userId}`)
 }
 
+// 管理员：获取全部用户
+export const getAllUsers = () => {
+    return request.get('/admin/users')
+}
+
+// 管理员：封禁用户
+export const banUser = (userId) => {
+    return request.put(`/admin/users/${userId}/ban`)
+}
+
 // 更新个人资料
 export const updateProfile = (data) => {
     return request.put('/user/profile', data)

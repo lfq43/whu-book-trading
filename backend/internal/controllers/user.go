@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
+	"book-trading/backend/internal/config"
 	"book-trading/backend/internal/database"
 	"book-trading/backend/internal/models"
 	"book-trading/backend/internal/utils"
@@ -24,14 +26,13 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// 2. 检查用户名是否已被使用
+	// 2. 检查账号名是否已被使用
 	var existingUser models.User
-	result := database.DB.Where("username = ?", req.Username).First(&existingUser)
+	result := database.DB.Where("account = ?", req.Account).First(&existingUser)
 	if result.Error == nil {
-		// 用户已存在
 		c.JSON(http.StatusConflict, models.Response{
 			Code:    409,
-			Message: "用户名已被注册",
+			Message: "账号名已被注册",
 			Data:    nil,
 		})
 		return
@@ -50,6 +51,7 @@ func Register(c *gin.Context) {
 
 	// 4. 创建用户对象
 	user := models.User{
+		Account:  req.Account,
 		Username: req.Username,
 		Password: hashedPassword,
 		Email:    req.Email,
@@ -71,6 +73,7 @@ func Register(c *gin.Context) {
 		Message: "注册成功",
 		Data: gin.H{
 			"id":       user.ID,
+			"account":  user.Account,
 			"username": user.Username,
 			"email":    user.Email,
 		},
@@ -91,30 +94,69 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// 2. 查找用户
+	// 2. 检查是否是配置里的管理员账号
+	if req.Account == config.AppConfig.AdminAccount && req.Password == config.AppConfig.AdminPassword {
+		adminUser := models.User{
+			ID:       0,
+			Account:  config.AppConfig.AdminAccount,
+			Username: "管理员",
+			IsAdmin:  true,
+		}
+		token, err := utils.GenerateToken(0, "管理员", true)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.Response{
+				Code:    500,
+				Message: "服务器错误：生成令牌失败",
+				Data:    nil,
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, models.Response{
+			Code:    0,
+			Message: "登录成功",
+			Data: models.LoginResponse{
+				Token: token,
+				User:  adminUser,
+			},
+		})
+		return
+	}
+
+	// 3. 查找用户
 	var user models.User
-	result := database.DB.Where("username = ?", req.Username).First(&user)
+	result := database.DB.Where("account = ?", req.Account).First(&user)
 	if result.Error != nil {
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Code:    401,
-			Message: "用户名或密码错误",
+			Message: "账号或密码错误",
 			Data:    nil,
 		})
 		return
 	}
 
-	// 3. 验证密码
+	// 4. 禁用用户不能登录
+	if user.IsBanned {
+		c.JSON(http.StatusForbidden, models.Response{
+			Code:    403,
+			Message: "账号已被封禁，请联系管理员",
+			Data:    nil,
+		})
+		return
+	}
+
+	// 5. 验证密码
 	if !utils.CheckPasswordHash(req.Password, user.Password) {
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Code:    401,
-			Message: "用户名或密码错误",
+			Message: "账号或密码错误",
 			Data:    nil,
 		})
 		return
 	}
 
-	// 4. 生成 JWT Token
-	token, err := utils.GenerateToken(user.ID, user.Username)
+	// 6. 生成 JWT Token
+	token, err := utils.GenerateToken(user.ID, user.Username, false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Code:    500,
@@ -124,7 +166,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// 5. 返回成功和 token
+	// 7. 返回成功和 token
 	c.JSON(http.StatusOK, models.Response{
 		Code:    0,
 		Message: "登录成功",
@@ -206,6 +248,67 @@ func GetUserProfile(c *gin.Context) {
 			"user":    user,
 			"batches": batches,
 		},
+	})
+}
+
+// GetAllUsers 管理员获取全部用户
+func GetAllUsers(c *gin.Context) {
+	var users []models.User
+	database.DB.Order("created_at DESC").Find(&users)
+
+	c.JSON(http.StatusOK, models.Response{
+		Code:    0,
+		Message: "success",
+		Data:    users,
+	})
+}
+
+// BanUser 管理员封禁用户
+func BanUser(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, models.Response{
+			Code:    400,
+			Message: "无效的用户ID",
+			Data:    nil,
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, uint(id)).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.Response{
+			Code:    404,
+			Message: "用户不存在",
+			Data:    nil,
+		})
+		return
+	}
+
+	if user.Account == config.AppConfig.AdminAccount {
+		c.JSON(http.StatusForbidden, models.Response{
+			Code:    403,
+			Message: "不能封禁管理员账号",
+			Data:    nil,
+		})
+		return
+	}
+
+	user.IsBanned = true
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Code:    500,
+			Message: "封禁失败",
+			Data:    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Code:    0,
+		Message: "封禁成功",
+		Data:    nil,
 	})
 }
 

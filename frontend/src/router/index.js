@@ -4,6 +4,7 @@ import Register from '../views/Register.vue'
 import Home from '../views/Home.vue'
 import Publish from '../views/Publish.vue'
 import MyBatches from '../views/MyBatches.vue'
+import AdminPanel from '../views/AdminPanel.vue'
 import { useUserStore } from '../stores/user'
 import BatchDetail from "../views/BatchDetail.vue";
 import UserSpace from "../views/UserSpace.vue";
@@ -23,8 +24,12 @@ const routes = [
         path: '/user/:id',
         name: 'UserSpace',
         component: UserSpace
-    },
-]
+    },    {
+        path: '/admin',
+        name: 'AdminPanel',
+        component: AdminPanel,
+        meta: { requiresAuth: true }
+    }]
 
 const router = createRouter({
     history: createWebHistory(),
@@ -36,6 +41,8 @@ router.beforeEach((to, from, next) => {
     const userStore = useUserStore()
     if (to.meta.requiresAuth && !userStore.isLoggedIn) {
         next('/login')
+    } else if (to.name === 'AdminPanel' && !userStore.isAdmin) {
+        next('/')
     } else {
         next()
     }

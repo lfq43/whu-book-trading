@@ -23,7 +23,7 @@
               <el-icon><ChatDotRound /></el-icon>
             </el-button>
           </div>
-          <span>📅 {{ formatDate(batch.created_at) }}</span>
+          <span> {{ formatDate(batch.created_at) }}</span>
         </div>
       </div>
 
@@ -39,7 +39,7 @@
 
       <!-- 未售出书籍列表 -->
       <div class="book-list-section" v-if="bookNames.length > 0">
-        <h3>📚 在售书籍（{{ bookNames.length }}本）</h3>
+        <h3>📗 在售书籍（{{ bookNames.length }}本）</h3>
         <div class="book-list">
           <div
               v-for="(name, index) in bookNames"
@@ -102,7 +102,7 @@
 
       <!-- 联系方式 -->
       <div class="contact-section">
-        <h3>📞 联系方式</h3>
+        <h3>📠 联系方式</h3>
         <div class="contact-box">
           <span class="contact-value">{{ batch.contact }}</span>
           <el-button type="primary" size="small" @click="copyContact">
@@ -112,7 +112,7 @@
       </div>
 
       <!-- 删除按钮 -->
-      <div v-if="isOwner" class="actions">
+      <div v-if="isOwner || isAdmin" class="actions">
         <el-button type="danger" @click="handleDelete">删除这个发布</el-button>
       </div>
     </div>
@@ -146,6 +146,7 @@ const chatVisible = ref(false)
 
 const currentUserId = computed(() => userStore.userInfo?.id)
 const isOwner = computed(() => batch.value?.user_id === currentUserId.value)
+const isAdmin = computed(() => userStore.isAdmin)
 
 // 解析未售出书籍列表
 const bookNames = computed(() => {
@@ -295,6 +296,7 @@ onMounted(() => {
 
 .meta {
   display: flex;
+  align-items: center;
   gap: 16px;
   color: #999;
   font-size: 14px;

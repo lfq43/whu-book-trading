@@ -20,6 +20,9 @@ type Config struct {
 
 	JWTSecret string
 
+	AdminAccount  string
+	AdminPassword string
+
 	ServerPort string
 }
 
@@ -43,6 +46,9 @@ func LoadConfig() {
 		RedisPwd:  getEnv("REDIS_PASSWORD", ""),
 
 		JWTSecret: getEnv("JWT_SECRET", "default-secret-key"),
+
+		AdminAccount:  getEnv("ADMIN_ACCOUNT", "lfq43"),
+		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
 
 		ServerPort: getEnv("SERVER_PORT", "8082"),
 	}

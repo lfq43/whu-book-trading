@@ -3,12 +3,13 @@
     <nav class="navbar">
       <div class="nav-container">
         <div class="logo">
-          <router-link to="/">📚 二手书交易平台</router-link>
+          <router-link to="/">📗 二手书交易平台</router-link>
         </div>
         <div class="nav-links">
           <router-link to="/">浏览书籍</router-link>
           <router-link v-if="userStore.isLoggedIn" to="/publish">发布书籍</router-link>
           <router-link v-if="userStore.isLoggedIn" to="/my-batches">我的发布</router-link>
+          <router-link v-if="userStore.isAdmin" to="/admin">管理员</router-link>
 
           <!-- 消息图标 -->
           <div v-if="userStore.isLoggedIn" class="message-icon" @click="openMessages">

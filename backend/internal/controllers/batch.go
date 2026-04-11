@@ -9,6 +9,7 @@ import (
 	"book-trading/backend/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // CreateBatch 发布一批书
@@ -379,8 +380,15 @@ func DeleteBatch(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("userID")
-	result := database.DB.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Batch{})
+	isAdmin, _ := c.Get("isAdmin")
+	var result *gorm.DB
+	if isAdminBool, ok := isAdmin.(bool); ok && isAdminBool {
+		result = database.DB.Where("id = ?", id).Delete(&models.Batch{})
+	} else {
+		userID, _ := c.Get("userID")
+		result = database.DB.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Batch{})
+	}
+
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Code:    500,

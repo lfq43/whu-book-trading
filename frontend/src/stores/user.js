@@ -17,7 +17,8 @@ export const useUserStore = defineStore('user', {
 
     // 计算属性（类似 Vue 的 computed）
     getters: {
-        isLoggedIn: (state) => !!state.token  // 是否有 token，用于判断是否登录
+        isLoggedIn: (state) => !!state.token,  // 是否有 token，用于判断是否登录
+        isAdmin: (state) => !!state.userInfo?.is_admin
     },
 
     // 方法（修改状态）

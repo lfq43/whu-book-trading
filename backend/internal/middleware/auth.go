@@ -55,8 +55,26 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 4. 将用户信息存入上下文，后续的控制器可以获取
 		c.Set("userID", claims.UserID) //后续使用的userid
 		c.Set("username", claims.Username)
+		c.Set("isAdmin", claims.IsAdmin)
 
 		// 5. 继续处理请求
+		c.Next()
+	}
+}
+
+// AdminMiddleware 管理员权限中间件
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		isAdmin, exists := c.Get("isAdmin")
+		if !exists || !isAdmin.(bool) {
+			c.JSON(http.StatusForbidden, models.Response{
+				Code:    403,
+				Message: "需要管理员权限",
+				Data:    nil,
+			})
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }

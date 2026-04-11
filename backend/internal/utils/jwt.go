@@ -13,11 +13,12 @@ import (
 type Claims struct {
 	UserID   uint   `json:"user_id"`
 	Username string `json:"username"`
+	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken 生成 JWT 令牌
-func GenerateToken(userID uint, username string) (string, error) {
+func GenerateToken(userID uint, username string, isAdmin bool) (string, error) {
 	// 设置令牌的有效期为 24 小时
 	expirationTime := time.Now().Add(24 * time.Hour)
 
@@ -25,6 +26,7 @@ func GenerateToken(userID uint, username string) (string, error) {
 	claims := &Claims{
 		UserID:   userID,
 		Username: username,
+		IsAdmin:  isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
