@@ -14,6 +14,14 @@
           :rules="rules"
           label-width="80px"
       >
+        <el-form-item label="账号名" prop="account">
+          <el-input
+              v-model="form.account"
+              placeholder="请输入账号名"
+              prefix-icon="User"
+          />
+        </el-form-item>
+
         <el-form-item label="用户名" prop="username">
           <el-input
               v-model="form.username"
@@ -75,6 +83,7 @@ const loading = ref(false)
 
 // 表单数据
 const form = reactive({
+  account: '',
   username: '',
   password: '',
   confirmPassword: '',
@@ -92,6 +101,10 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 // 表单验证规则
 const rules = {
+  account: [
+    { required: true, message: '请输入账号名', trigger: 'blur' },
+    { min: 3, max: 50, trigger: 'blur' }
+  ],
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 3, max: 10, trigger: 'blur' }
@@ -120,6 +133,7 @@ const handleRegister = async () => {
     try {
       // 2. 调用注册 API（注意：不需要传 confirmPassword）
       await register({
+        account: form.account,
         username: form.username,
         password: form.password,
         email: form.email

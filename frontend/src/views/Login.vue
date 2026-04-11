@@ -14,11 +14,11 @@
           :rules="rules"
           label-width="80px"
       >
-        <el-form-item label="用户名" prop="username">
+        <el-form-item label="账号名" prop="account">
           <!--prop对应rules中对应规则-->
           <el-input
-              v-model="form.username"
-              placeholder="请输入用户名"
+              v-model="form.account"
+              placeholder="请输入账号名"
               prefix-icon="User"
           />
         </el-form-item>
@@ -62,7 +62,7 @@ const loading = ref(false)
 // 表单数据
 // 2. reactive：只用于对象（直接访问，不需要 .value）
 const form = reactive({
-  username: '',
+  account: '',
   password: ''
 })
 // 3. 什么时候用 ref？什么时候用 reactive？
@@ -72,8 +72,8 @@ const form = reactive({
 
 // 表单验证规则
 const rules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
+  account: [
+    { required: true, message: '请输入账号名', trigger: 'blur' },
     { min: 3, max: 15, trigger: 'blur' }
   ],
   password: [
@@ -94,7 +94,7 @@ const handleLogin = async () => {
     try {
       // 2. 调用登录 API
       const response = await login({
-        username: form.username,
+        account: form.account,
         password: form.password
       })
 
