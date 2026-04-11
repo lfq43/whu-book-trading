@@ -1,6 +1,6 @@
 <template>
   <div class="image-uploader">
-    <div class="upload-area" @click="triggerUpload" v-if="!imageUrl">
+    <div class="upload-area" @click="triggerUpload" v-if="!imageUrl && !uploading">
       <el-icon :size="32"><Plus /></el-icon>
       <span>点击上传图片</span>
       <input
@@ -10,6 +10,11 @@
           style="display: none"
           @change="handleFileChange"
       />
+    </div>
+
+    <div v-else-if="uploading" class="uploading-area">
+      <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+      <span>上传中...</span>
     </div>
 
     <div v-else class="image-preview">
@@ -27,19 +32,23 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Delete, Edit } from '@element-plus/icons-vue'
+import { Plus, Delete, Edit, Loading } from '@element-plus/icons-vue'
 import { uploadImage } from '../api/upload'
 
 const props = defineProps({
   modelValue: {
     type: String,
     default: ''
+  },
+  batchId: {
+    type: Number,
+    default: null
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'upload-success'])
 
 const fileInput = ref(null)
 const uploading = ref(false)
@@ -70,18 +79,22 @@ const handleFileChange = async (event) => {
 
   uploading.value = true
   try {
+    // 上传图片到服务器
     const response = await uploadImage(file)
-    imageUrl.value = response.data.url
-    emit('update:modelValue', response.data.url)
-    ElMessage.success('上传成功')
+    const url = response.data.url
+
+    imageUrl.value = url
+    emit('update:modelValue', url)
+    emit('upload-success', url)
+    ElMessage.success('图片上传成功')
   } catch (error) {
     ElMessage.error(error.message || '上传失败')
-  } finally {
-    uploading.value = false
-    // 清空 input，允许重新上传同一文件
+    // 清空 input，允许重新上传
     if (fileInput.value) {
       fileInput.value.value = ''
     }
+  } finally {
+    uploading.value = false
   }
 }
 
@@ -89,12 +102,14 @@ const handleFileChange = async (event) => {
 const removeImage = () => {
   imageUrl.value = ''
   emit('update:modelValue', '')
+  emit('upload-success', '')
 }
 
 // 监听外部变化
-import { watch } from 'vue'
 watch(() => props.modelValue, (newVal) => {
-  imageUrl.value = newVal
+  if (newVal !== imageUrl.value) {
+    imageUrl.value = newVal
+  }
 })
 </script>
 
@@ -130,6 +145,29 @@ watch(() => props.modelValue, (newVal) => {
 
 .upload-area span {
   color: #999;
+  font-size: 14px;
+}
+
+.uploading-area {
+  width: 100%;
+  min-height: 150px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #fafafa;
+  padding: 20px;
+}
+
+.uploading-area .el-icon {
+  color: #409eff;
+}
+
+.uploading-area span {
+  color: #666;
   font-size: 14px;
 }
 

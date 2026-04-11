@@ -32,3 +32,8 @@ export const updateBookSoldStatus = (batchId, bookName, sold) => {
 export const deleteBatch = (id) => {
     return request.delete(`/batches/${id}`)
 }
+
+// 更新批次图片
+export const updateBatchImage = (batchId, imageUrl) => {
+    return request.put(`/batches/${batchId}/image`, { image: imageUrl })
+}

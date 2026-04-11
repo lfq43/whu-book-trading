@@ -5,7 +5,14 @@ export const useUserStore = defineStore('user', {
     // 状态（数据）
     state: () => ({
         token: localStorage.getItem('token') || '',  // 从本地存储读取 token
-        userInfo: null  // 用户信息
+        userInfo: (() => {
+            try {
+                const stored = localStorage.getItem('user_info')
+                return stored ? JSON.parse(stored) : null
+            } catch {
+                return null
+            }
+        })()
     }),
 
     // 计算属性（类似 Vue 的 computed）
@@ -23,6 +30,7 @@ export const useUserStore = defineStore('user', {
 
         setUserInfo(userInfo) {
             this.userInfo = userInfo
+            localStorage.setItem('user_info', JSON.stringify(userInfo))
         },
 
         // 退出登录
@@ -30,6 +38,7 @@ export const useUserStore = defineStore('user', {
             this.token = ''
             this.userInfo = null
             localStorage.removeItem('token')
+            localStorage.removeItem('user_info')
         }
     }
 })

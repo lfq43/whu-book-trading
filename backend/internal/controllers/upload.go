@@ -82,7 +82,7 @@ func UploadImage(c *gin.Context) {
 		return
 	}
 
-	// 返回图片URL（相对路径，前端需要拼接基础URL）
+	// 返回图片URL
 	imageURL := "/uploads/" + filename
 
 	c.JSON(http.StatusOK, models.Response{

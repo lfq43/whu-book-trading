@@ -7,6 +7,15 @@
 
     <div v-loading="loading" class="batch-list">
       <el-card v-for="batch in batches" :key="batch.id" class="batch-card" @click="goToDetail(batch.id)">
+        <!-- 图片 -->
+        <div class="batch-image">
+          <ImageViewer
+              :src="batch.image || '/placeholder.png'"
+              :title="batch.title"
+              width="100%"
+              height="100px"
+          />
+        </div>
         <div class="batch-info">
           <div class="batch-header">
             <h3>{{ batch.title }}</h3>
@@ -47,6 +56,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getMyBatches } from '../api/batch'
+import ImageViewer from "../components/ImageViewer.vue";
 
 const router = useRouter()
 const loading = ref(false)

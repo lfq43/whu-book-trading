@@ -36,19 +36,14 @@
           @click="goToDetail(batch.id)"
       >
         <div class="batch-content">
-          <!-- 图片区域 -->
+          <!-- 图片区域 - 使用图片预览组件 -->
           <div class="batch-image">
-            <el-image
+            <ImageViewer
                 :src="batch.image || '/placeholder.png'"
-                fit="cover"
-                class="batch-img"
-            >
-              <template #error>
-                <div class="image-placeholder">
-                  <el-icon><Picture /></el-icon>
-                </div>
-              </template>
-            </el-image>
+                :title="batch.title"
+                width="100%"
+                height="120px"
+            />
           </div>
 
           <!-- 信息区域 -->
@@ -120,6 +115,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Picture } from '@element-plus/icons-vue'
 import { getBatchList } from '../api/batch'
+import ImageViewer from "../components/ImageViewer.vue";
 
 const router = useRouter()
 

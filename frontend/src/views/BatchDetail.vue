@@ -14,7 +14,7 @@
             </el-avatar>
             <span class="seller-name">{{ batch.user?.username }}</span>
             <el-button
-                v-if="batch.user_id !== currentUserId"
+                v-if="batch.value?.user_id !== currentUserId"
                 type="primary"
                 size="small"
                 circle
@@ -27,9 +27,14 @@
         </div>
       </div>
 
-      <!-- 图片 -->
+      <!-- 图片区域 - 使用图片预览组件 -->
       <div v-if="batch.image" class="detail-image">
-        <el-image :src="batch.image" fit="contain" style="max-height: 300px" />
+        <ImageViewer
+            :src="batch.image"
+            :title="batch.title"
+            width="30%"
+            height="30%"
+        />
       </div>
 
       <!-- 未售出书籍列表 -->
@@ -129,6 +134,7 @@ import { ChatDotRound } from '@element-plus/icons-vue'
 import { getBatchDetail, updateBookSoldStatus, deleteBatch } from '../api/batch'
 import { useUserStore } from '../stores/user'
 import ChatWindow from '../components/ChatWindow.vue'
+import ImageViewer from "../components/ImageViewer.vue";
 
 const route = useRoute()
 const router = useRouter()

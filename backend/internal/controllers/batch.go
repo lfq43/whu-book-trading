@@ -243,6 +243,52 @@ func GetBatchDetail(c *gin.Context) {
 	})
 }
 
+// UpdateBatchImage 更新批次图片
+func UpdateBatchImage(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.Response{
+			Code:    400,
+			Message: "无效的ID",
+			Data:    nil,
+		})
+		return
+	}
+
+	var req struct {
+		Image string `json:"image" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.Response{
+			Code:    400,
+			Message: "参数错误: " + err.Error(),
+			Data:    nil,
+		})
+		return
+	}
+
+	userID, _ := c.Get("userID")
+	var batch models.Batch
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&batch).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.Response{
+			Code:    404,
+			Message: "批次不存在或无权限",
+			Data:    nil,
+		})
+		return
+	}
+
+	batch.Image = req.Image
+	database.DB.Save(&batch)
+
+	c.JSON(http.StatusOK, models.Response{
+		Code:    0,
+		Message: "图片更新成功",
+		Data:    batch,
+	})
+}
+
 // GetBatchList 获取批次列表（只显示还有未售出书籍的批次）
 func GetBatchList(c *gin.Context) {
 	keyword := c.Query("keyword")

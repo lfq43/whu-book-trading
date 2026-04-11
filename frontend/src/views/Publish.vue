@@ -2,13 +2,13 @@
   <div class="publish-container">
     <div class="header">
       <h1>📦 发布一批书</h1>
-      <p>简单描述，快速出手</p>
+      <p>填写书名列表，卖出一本勾一本</p>
     </div>
 
     <el-card class="publish-card">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="批次标题" prop="title">
-          <el-input v-model="form.title" placeholder="" />
+          <el-input v-model="form.title" placeholder="例如：大学教材5本、考研资料一堆" />
         </el-form-item>
 
         <!-- 动态书名列表 -->
@@ -51,9 +51,14 @@
           />
         </el-form-item>
 
+        <!-- 图片上传组件（修改后） -->
         <el-form-item label="图片">
-          <ImageUploader v-model="form.image" />
-          <div class="form-tip">支持 JPG、PNG、GIF 格式，大小不超过 5MB</div>
+          <ImageUploader
+              v-model="form.image"
+              :batch-id="batchId"
+              @upload-success="onUploadSuccess"
+          />
+          <div class="form-tip">支持 JPG、PNG、GIF 格式，大小不超过 5MB。先发布，后上传图片</div>
         </el-form-item>
 
         <el-form-item label="联系方式" prop="contact">
@@ -76,7 +81,7 @@
     <!-- 预览 -->
     <el-card v-if="form.title" class="preview-card">
       <template #header>
-        <span>预览效果</span>
+        <span>📱 预览效果</span>
       </template>
       <div class="preview">
         <h3>{{ form.title }}</h3>
@@ -85,7 +90,10 @@
             📖 {{ name || '未填写' }}
           </div>
         </div>
-        <p class="preview-contact">联系方式：{{ form.contact || '未填写' }}</p>
+        <div v-if="form.image" class="preview-image">
+          <img :src="form.image" alt="预览" />
+        </div>
+        <p class="preview-contact">📞 联系方式：{{ form.contact || '未填写' }}</p>
       </div>
     </el-card>
   </div>
@@ -96,16 +104,17 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete } from '@element-plus/icons-vue'
-import { createBatch } from '../api/batch'
-import ImageUploader from "../components/ImageUploader.vue";
+import { createBatch, updateBatchImage } from '../api/batch'
+import ImageUploader from '../components/ImageUploader.vue'
 
 const router = useRouter()
 const formRef = ref(null)
 const submitting = ref(false)
+const batchId = ref(null)  // 存储创建后的批次ID
 
 const form = reactive({
   title: '',
-  book_names: ['', ''],  // 至少两本，方便演示
+  book_names: ['', ''],
   description: '',
   image: '',
   contact: ''
@@ -159,14 +168,25 @@ const submitPublish = async () => {
 
     submitting.value = true
     try {
-      await createBatch({
+      // 第一步：创建批次（不带图片）
+      const response = await createBatch({
         title: form.title,
         book_names: form.book_names.filter(name => name.trim()),
         description: form.description,
-        image: form.image,
         contact: form.contact
+        // 注意：这里不传 image
       })
-      ElMessage.success('发布成功！')
+
+      batchId.value = response.data.id
+      ElMessage.success('发布成功！正在上传图片...')
+      // 第二步：如果有图片，上传图片并更新批次
+      if (form.image) {
+        // 图片已经通过 ImageUploader 上传了，URL 已经存在
+        // 只需要更新批次的 image 字段
+        await updateBatchImage(batchId.value, form.image)
+        ElMessage.success('图片上传成功')
+      }
+
       router.push('/my-batches')
     } catch (error) {
       ElMessage.error(error.message || '发布失败')
@@ -176,16 +196,26 @@ const submitPublish = async () => {
   })
 }
 
+const onUploadSuccess = (url) => {
+  form.image = url
+  // 如果批次已经创建，立即更新
+  if (batchId.value) {
+    updateBatchImage(batchId.value, url)
+  }
+}
+
 const resetForm = () => {
   form.title = ''
   form.book_names = ['', '']
   form.description = ''
   form.image = ''
   form.contact = ''
+  batchId.value = null
 }
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .publish-container {
   max-width: 700px;
   margin: 0 auto;
@@ -240,6 +270,16 @@ const resetForm = () => {
 .preview-book {
   padding: 4px 0;
   color: #333;
+}
+
+.preview-image {
+  margin: 15px 0;
+}
+
+.preview-image img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
 }
 
 .preview-contact {

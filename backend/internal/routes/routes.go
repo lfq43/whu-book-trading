@@ -36,6 +36,7 @@ func SetupRoutes(r *gin.Engine) {
 			batch := protected.Group("/batches")
 			{
 				batch.POST("", controllers.CreateBatch)
+				batch.PUT("/:id/image", controllers.UpdateBatchImage)
 				batch.PUT("/:id/book-status", controllers.UpdateBookSoldStatus)
 				batch.DELETE("/:id", controllers.DeleteBatch)
 			}
@@ -49,7 +50,7 @@ func SetupRoutes(r *gin.Engine) {
 				message.GET("/conversation/:userId", controllers.GetConversation) // 与某人的聊天记录
 			}
 
-			// 上传相关
+			// 文件相关
 			upload := protected.Group("/upload")
 			{
 				upload.POST("/image", controllers.UploadImage)
