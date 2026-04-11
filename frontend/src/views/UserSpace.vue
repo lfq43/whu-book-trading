@@ -35,7 +35,7 @@
             />
             <el-button
                 v-if="isOwner && !isEditingName"
-                type="text"
+                link
                 @click="startEditName"
             >
               <el-icon><Edit /></el-icon>
@@ -127,23 +127,18 @@
     </div>
 
     <!-- 头像上传弹窗 -->
-    <el-dialog v-model="avatarDialogVisible" title="裁剪头像" width="500px">
+    <el-dialog v-model="avatarDialogVisible" title="裁剪头像" width="620px" @close="closeAvatarDialog">
       <div class="avatar-cropper">
-        <vue-cropper
+                <VueCropper
+            :key="cropperKey"
             ref="cropperRef"
+            style="width: 100%; height: 100%;"
             :src="avatarTempUrl"
-            :aspect-ratio="1"
-            :view-mode="1"
-            :auto-crop-area="0.8"
-            :fixed-box="true"
-            :fixed="true"
-            :info="true"
-            :full="false"
-            :output-type="'png'"
+            :options="cropperOptions"
         />
       </div>
       <template #footer>
-        <el-button @click="avatarDialogVisible = false">取消</el-button>
+        <el-button @click="closeAvatarDialog">取消</el-button>
         <el-button type="primary" @click="confirmAvatar">确认上传</el-button>
       </template>
     </el-dialog>
@@ -160,6 +155,7 @@ import { uploadAvatar } from '../api/upload'
 import { useUserStore } from '../stores/user'
 import ImageViewer from '../components/ImageViewer.vue'
 import { VueCropper } from 'vue-cropper-next'
+import 'cropperjs/dist/cropper.css'
 
 const route = useRoute()
 const router = useRouter()
@@ -180,6 +176,26 @@ const avatarInput = ref(null)
 const avatarDialogVisible = ref(false)
 const avatarTempUrl = ref('')
 const cropperRef = ref(null)
+const cropperKey = ref(0)
+const cropperOptions = {
+  viewMode: 2,
+  autoCropArea: 0.85,
+  dragMode: 'move',
+  aspectRatio: 1,
+  preview: '',
+  responsive: true,
+  modal: true,
+  guides: true,
+  center: true,
+  background: false,
+  zoomable: true,
+  zoomOnWheel: true,
+  cropBoxMovable: true,
+  cropBoxResizable: true,
+  toggleDragModeOnDblclick: false,
+  minCropBoxWidth: 120,
+  minCropBoxHeight: 120,
+}
 
 // 计算总书籍数
 const totalBooks = computed(() => {
@@ -259,9 +275,9 @@ const formatDate = (dateStr) => {
 // 加载个人空间数据
 const loadUserSpace = async () => {
   const userId = route.params.id
-
   // 判断是否是自己的空间
-  isOwner.value = userStore.userInfo?.id === userId
+  isOwner.value = Number(userStore.userInfo?.id) === Number(userId)
+  console.log(isOwner.value)
 
   loading.value = true
   try {
@@ -338,24 +354,54 @@ const handleAvatarChange = async (event) => {
     return
   }
 
+  // 清理旧临时 URL，避免旧图片缓存
+  if (avatarTempUrl.value) {
+    URL.revokeObjectURL(avatarTempUrl.value)
+    avatarTempUrl.value = ''
+  }
+
   // 创建临时 URL 用于裁剪
   avatarTempUrl.value = URL.createObjectURL(file)
+  cropperKey.value += 1
   avatarDialogVisible.value = true
 
   // 清空 input
   avatarInput.value.value = ''
 }
 
+const closeAvatarDialog = () => {
+  avatarDialogVisible.value = false
+  if (avatarTempUrl.value) {
+    URL.revokeObjectURL(avatarTempUrl.value)
+    avatarTempUrl.value = ''
+  }
+  cropperKey.value += 1
+}
+
 // 确认上传头像
 const confirmAvatar = async () => {
   if (!cropperRef.value) return
 
+  const cropperInstance = cropperRef.value.cropper
+  if (!cropperInstance || typeof cropperInstance.getCroppedCanvas !== 'function') {
+    ElMessage.error('裁剪组件未就绪，请重试')
+    return
+  }
+
   // 获取裁剪后的图片数据
-  const cropper = cropperRef.value
-  const canvas = cropper.getCroppedCanvas()
+  const canvas = cropperInstance.getCroppedCanvas({ width: 400, height: 400 })
+  if (!canvas) {
+    ElMessage.error('裁剪失败，请重试')
+    return
+  }
 
   // 将 canvas 转换为 Blob
   canvas.toBlob(async (blob) => {
+    if (!blob) {
+      ElMessage.error('头像生成失败，请重试')
+      return
+    }
+
     const file = new File([blob], 'avatar.png', { type: 'image/png' })
 
     try {
@@ -584,7 +630,7 @@ onMounted(() => {
 
 /* 头像裁剪弹窗 */
 .avatar-cropper {
-  height: 400px;
+  height: 480px;
 }
 
 :deep(.vue-cropper) {
