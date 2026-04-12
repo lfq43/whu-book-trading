@@ -49,7 +49,6 @@
     <ChatWindow
         v-model="chatVisible"
         :other-user="selectedUser"
-        @message-sent="onMessageSent"
     />
   </div>
 </template>
@@ -66,13 +65,13 @@ import ChatWindow from './components/ChatWindow.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { unreadCount, startPolling } = useNotification()
+const { unreadCount, startPolling, checkUnread } = useNotification()
 
 const messageListVisible = ref(false)
 const chatVisible = ref(false)
 const selectedUser = ref(null)
 
-// 启动消息轮询
+// 启动未读数初始化
 if (userStore.isLoggedIn) {
   startPolling()
 }
@@ -80,6 +79,7 @@ if (userStore.isLoggedIn) {
 // 打开消息列表
 const openMessages = () => {
   messageListVisible.value = true
+  checkUnread()
 }
 
 // 选择聊天对象
@@ -87,13 +87,6 @@ const onSelectChat = (user) => {
   selectedUser.value = user
   messageListVisible.value = false
   chatVisible.value = true
-}
-
-// 消息发送后刷新未读
-const onMessageSent = () => {
-  // 刷新未读数量
-  const { checkUnread } = useNotification()
-  checkUnread()
 }
 
 const handleMenuCommand = (command) => {

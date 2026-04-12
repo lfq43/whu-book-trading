@@ -1,15 +1,45 @@
 package controllers
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"book-trading/backend/internal/database"
 	"book-trading/backend/internal/models"
+	"book-trading/backend/internal/ws"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+func createMessage(fromUserID, toUserID uint, content string) (*models.Message, error) {
+	if fromUserID == toUserID {
+		return nil, errors.New("不能给自己发送消息")
+	}
+
+	var toUser models.User
+	if err := database.DB.First(&toUser, toUserID).Error; err != nil {
+		return nil, err
+	}
+
+	message := models.Message{
+		FromUserID: fromUserID,
+		ToUserID:   toUserID,
+		Content:    content,
+		IsRead:     false,
+	}
+
+	if err := database.DB.Create(&message).Error; err != nil {
+		return nil, err
+	}
+
+	updateConversation(fromUserID, toUserID, content, false)
+	updateConversation(toUserID, fromUserID, content, true)
+
+	database.DB.Preload("FromUser").First(&message, message.ID)
+	return &message, nil
+}
 
 // SendMessage 发送消息
 func SendMessage(c *gin.Context) {
@@ -37,35 +67,16 @@ func SendMessage(c *gin.Context) {
 		return
 	}
 
-	if fromUserID.(uint) == req.ToUserID {
-		c.JSON(http.StatusBadRequest, models.Response{
-			Code:    400,
-			Message: "不能给自己发送消息",
-			Data:    nil,
-		})
-		return
-	}
-
-	// 检查接收者是否存在
-	var toUser models.User
-	if err := database.DB.First(&toUser, req.ToUserID).Error; err != nil {
-		c.JSON(http.StatusNotFound, models.Response{
-			Code:    404,
-			Message: "接收者不存在",
-			Data:    nil,
-		})
-		return
-	}
-
-	// 创建消息
-	message := models.Message{
-		FromUserID: fromUserID.(uint),
-		ToUserID:   req.ToUserID,
-		Content:    req.Content,
-		IsRead:     false,
-	}
-
-	if err := database.DB.Create(&message).Error; err != nil {
+	message, err := createMessage(fromUserID.(uint), req.ToUserID, req.Content)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, models.Response{
+				Code:    404,
+				Message: "接收者不存在",
+				Data:    nil,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Code:    500,
 			Message: "发送失败: " + err.Error(),
@@ -74,14 +85,7 @@ func SendMessage(c *gin.Context) {
 		return
 	}
 
-	// 更新或创建对话记录（发送者视角）
-	updateConversation(fromUserID.(uint), req.ToUserID, req.Content, false)
-
-	// 更新或创建对话记录（接收者视角，增加未读计数）
-	updateConversation(req.ToUserID, fromUserID.(uint), req.Content, true)
-
-	// 预加载发送者信息
-	database.DB.Preload("FromUser").First(&message, message.ID)
+	ws.DefaultHub.SendToUser(req.ToUserID, gin.H{"type": "message_received", "data": message})
 
 	c.JSON(http.StatusOK, models.Response{
 		Code:    0,
@@ -112,7 +116,6 @@ func updateConversation(userID, otherUserID uint, lastMessage string, incrementU
 		database.DB.Create(&conv)
 	} else {
 		// 存在，更新记录
-		fmt.Println("更新对话记录")
 		updates := map[string]interface{}{
 			"last_message": lastMessage,
 			"last_time":    database.DB.NowFunc(),

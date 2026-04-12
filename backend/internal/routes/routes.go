@@ -20,6 +20,9 @@ func SetupRoutes(r *gin.Engine) {
 		// 用户公开路由（查看个人空间）
 		api.GET("/users/:id", controllers.GetUserProfile)
 
+		// WebSocket 聊天
+		api.GET("/ws", controllers.Websocket)
+
 		// 批次公开路由
 		api.GET("/batches", controllers.GetBatchList)
 		api.GET("/batches/:id", controllers.GetBatchDetail)

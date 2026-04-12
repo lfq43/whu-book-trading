@@ -39,7 +39,6 @@ const stopBlink = () => {
 // 检查未读消息
 export const useNotification = () => {
     const unreadCount = ref(0)
-    let pollingTimer = null
 
     const checkUnread = async () => {
         try {
@@ -59,18 +58,13 @@ export const useNotification = () => {
 
     const startPolling = () => {
         checkUnread()
-        pollingTimer = setInterval(checkUnread, 5000) // 每5秒检查一次
     }
 
     const stopPolling = () => {
-        if (pollingTimer) {
-            clearInterval(pollingTimer)
-            pollingTimer = null
-        }
         stopBlink()
     }
 
-    // 页面获得焦点时停止闪烁
+    // 页面获得焦点时停止闪烁并刷新一次未读
     const onFocus = () => {
         stopBlink()
         checkUnread()

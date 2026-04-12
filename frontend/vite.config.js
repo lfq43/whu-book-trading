@@ -10,6 +10,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8082',
         changeOrigin: true,
+        ws: true,
         // 重写路径：去掉 /api 前缀（如果后端路由也带 /api 就不需要重写）
         // 我们的后端路由是 /api/xxx，所以不需要重写
         // rewrite: (path) => path.replace(/^\/api/, '')

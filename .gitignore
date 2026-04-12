@@ -55,5 +55,6 @@ go.work.sum
 /dist
 /.vite
 
+# Static assets
 *.png
 *.jpg

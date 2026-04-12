@@ -36,10 +36,6 @@
           </div>
         </div>
 
-        <!-- 新消息分隔线（可选） -->
-        <div v-if="newMessageCount > 0" class="new-message-divider">
-          <span>{{ newMessageCount }} 条新消息</span>
-        </div>
       </div>
 
       <!-- 输入框 -->
@@ -65,7 +61,7 @@
 import { ref, watch, nextTick, onUnmounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
-import { sendMessage, getConversation } from '../api/message'
+import { getConversation } from '../api/message'
 import { useUserStore } from '../stores/user'
 
 const props = defineProps({
@@ -89,29 +85,43 @@ const loadingMore = ref(false)
 const hasMore = ref(true)
 const nextBeforeId = ref(0)
 const messageListRef = ref(null)
-let pollingTimer = null
+const socket = ref(null)
+const wsConnected = ref(false)
 let isFirstLoad = true
 
 // 监听外部控制
-watch(() => props.modelValue, async (val) => {
-  visible.value = val
-  if (val && props.otherUser) {
-    await loadMessages(true) // 重置并加载最新消息
-    startPolling()
-  } else {
-    stopPolling()
+watch(
+  () => props.modelValue,
+  async (val) => {
+    visible.value = val
+    if (val && props.otherUser) {
+      await loadMessages(true)
+      initWebsocket()
+    } else {
+      closeWebsocket()
+    }
   }
-})
+)
+
+watch(
+  () => props.otherUser,
+  async (val) => {
+    if (visible.value && val) {
+      await loadMessages(true)
+      if (!socket.value || socket.value.readyState !== WebSocket.OPEN) {
+        initWebsocket()
+      }
+    }
+  }
+)
 
 watch(visible, (val) => {
   emit('update:modelValue', val)
   if (!val) {
-    stopPolling()
+    closeWebsocket()
   }
 })
 
-// 加载消息
-// reset: 是否重置（清空现有消息，重新加载）
 const loadMessages = async (reset = false) => {
   if (!props.otherUser) return
 
@@ -122,10 +132,7 @@ const loadMessages = async (reset = false) => {
     isFirstLoad = true
   }
 
-  // 如果是加载更多，且没有更多了，直接返回
   if (!reset && !hasMore.value) return
-
-  // 如果是加载更多，设置加载状态
   if (!reset) {
     loadingMore.value = true
   }
@@ -140,19 +147,13 @@ const loadMessages = async (reset = false) => {
 
     if (reset) {
       messages.value = newMessages
-      // 滚动到底部
       await nextTick()
       scrollToBottom()
     } else {
-      // 加载更多历史消息，添加到列表顶部
-      // 保存滚动高度，用于保持位置
       const oldScrollHeight = messageListRef.value?.scrollHeight || 0
       const oldScrollTop = messageListRef.value?.scrollTop || 0
-
       messages.value = [...newMessages, ...messages.value]
-
       await nextTick()
-      // 恢复滚动位置（新的内容在顶部，需要调整）
       if (messageListRef.value && newMessages.length > 0) {
         const newScrollHeight = messageListRef.value.scrollHeight
         messageListRef.value.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop
@@ -167,109 +168,132 @@ const loadMessages = async (reset = false) => {
   }
 }
 
-// 发送消息
-const send = async () => {
-  if (!inputContent.value.trim()) return
-  if (!props.otherUser) return
+const getWebsocketUrl = () => {
+  const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  const host = window.location.host
+  const token = encodeURIComponent(userStore.token)
+  return `${scheme}://${host}/api/ws?token=${token}`
+}
+
+const initWebsocket = () => {
+  if (!userStore.token || !props.otherUser) return
+  if (socket.value && socket.value.readyState === WebSocket.OPEN) return
 
   try {
-    await sendMessage(props.otherUser.id, inputContent.value)
-    inputContent.value = ''
-    // 重新加载最新消息
-    await loadMessages(true)
-    emit('message-sent')
+    const ws = new WebSocket(getWebsocketUrl())
+    socket.value = ws
+
+    ws.onopen = () => {
+      wsConnected.value = true
+    }
+
+    ws.onmessage = async (event) => {
+      try {
+        const packet = JSON.parse(event.data)
+        if (packet.type === 'message_received' || packet.type === 'message_sent') {
+          const message = packet.data
+          if (!message) return
+          if (
+            message.from_user_id === props.otherUser.id ||
+            message.to_user_id === props.otherUser.id
+          ) {
+            appendMessage(message)
+          }
+        }
+      } catch (error) {
+        console.error('WebSocket 消息解析失败:', error)
+      }
+    }
+
+    ws.onclose = () => {
+      wsConnected.value = false
+      socket.value = null
+    }
+
+    ws.onerror = (error) => {
+      console.error('WebSocket 错误:', error)
+      wsConnected.value = false
+    }
   } catch (error) {
-    ElMessage.error('发送失败: ' + (error.message || '未知错误'))
+    console.error('WebSocket 连接失败:', error)
   }
 }
 
-// 滚动到底部
+const handleClose = () => {
+  closeWebsocket()
+  visible.value = false
+}
+const closeWebsocket = () => {
+  if (socket.value) {
+    socket.value.close()
+    socket.value = null
+  }
+  wsConnected.value = false
+}
+
+const appendMessage = async (message) => {
+  if (!message || !props.otherUser) return
+  const exists = messages.value.some((item) => item.id === message.id)
+  if (!exists) {
+    messages.value.push(message)
+    await nextTick()
+    scrollToBottom()
+  }
+}
+
+const send = async () => {
+  if (!inputContent.value.trim() || !props.otherUser) return
+  if (!socket.value || socket.value.readyState !== WebSocket.OPEN) {
+    ElMessage.error('聊天连接未就绪，请稍后重试')
+    return
+  }
+
+  const payload = {
+    type: 'send_message',
+    data: {
+      to_user_id: props.otherUser.id,
+      content: inputContent.value.trim(),
+    },
+  }
+
+  socket.value.send(JSON.stringify(payload))
+  inputContent.value = ''
+}
+
 const scrollToBottom = () => {
   if (messageListRef.value) {
     messageListRef.value.scrollTop = messageListRef.value.scrollHeight
   }
 }
 
-// 处理滚动事件（滑动加载）
 const handleScroll = () => {
-  if (!messageListRef.value) return
-  if (loadingMore.value) return
-  if (!hasMore.value) return
-
-  // 滚动到顶部时加载更多
+  if (!messageListRef.value || loadingMore.value || !hasMore.value) return
   if (messageListRef.value.scrollTop <= 50) {
     loadMessages(false)
   }
 }
 
-// 格式化时间
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
   const date = new Date(timeStr)
   const now = new Date()
   const diff = now - date
 
-  // 今天内显示时间
   if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
   }
-  // 昨天
+
   const yesterday = new Date(now)
   yesterday.setDate(now.getDate() - 1)
   if (date.getDate() === yesterday.getDate()) {
     return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
   }
-  // 更早
+
   return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
 }
 
-// 开始轮询（每3秒检查新消息）
-const startPolling = () => {
-  if (pollingTimer) clearInterval(pollingTimer)
-  pollingTimer = setInterval(() => {
-    if (visible.value && props.otherUser) {
-      checkNewMessages()
-    }
-  }, 3000)
-}
-
-// 检查新消息（只获取最新的消息）
-const checkNewMessages = async () => {
-  if (!props.otherUser) return
-
-  try {
-    // 获取最新消息（不传 before_id，只取最新的1条判断是否有新消息）
-    const response = await getConversation(props.otherUser.id, 0, 1)
-    const newMessages = response.data.messages || []
-
-    if (newMessages.length > 0) {
-      const latestMessage = newMessages[0]
-      // 如果最新消息不是当前用户发送的，且不在现有消息列表中
-      const existingIds = messages.value.map(m => m.id)
-      if (!existingIds.includes(latestMessage.id) && latestMessage.from_user_id !== currentUserId.value) {
-        // 有新消息，重新加载
-        await loadMessages(true)
-      }
-    }
-  } catch (error) {
-    console.error('检查新消息失败:', error)
-  }
-}
-
-// 停止轮询
-const stopPolling = () => {
-  if (pollingTimer) {
-    clearInterval(pollingTimer)
-    pollingTimer = null
-  }
-}
-
-const handleClose = () => {
-  stopPolling()
-}
-
 onUnmounted(() => {
-  stopPolling()
+  closeWebsocket()
 })
 </script>
 
