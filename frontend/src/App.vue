@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {ArrowDown, ChatDotRound} from '@element-plus/icons-vue'
@@ -65,16 +65,23 @@ import ChatWindow from './components/ChatWindow.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { unreadCount, startPolling, checkUnread } = useNotification()
+const { unreadCount, startPolling, stopPolling, checkUnread } = useNotification()
 
 const messageListVisible = ref(false)
 const chatVisible = ref(false)
 const selectedUser = ref(null)
 
-// 启动未读数初始化
-if (userStore.isLoggedIn) {
-  startPolling()
-}
+watch(
+  () => userStore.isLoggedIn,
+  (isLoggedIn) => {
+    if (isLoggedIn) {
+      startPolling()
+    } else {
+      stopPolling()
+    }
+  },
+  { immediate: true }
+)
 
 // 打开消息列表
 const openMessages = () => {

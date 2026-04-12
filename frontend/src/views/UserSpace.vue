@@ -277,8 +277,6 @@ const loadUserSpace = async () => {
   const userId = route.params.id
   // 判断是否是自己的空间
   isOwner.value = Number(userStore.userInfo?.id) === Number(userId)
-  console.log(isOwner.value)
-
   loading.value = true
   try {
     const response = await getUserProfile(userId)

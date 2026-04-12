@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
-import { getUnreadCount } from '../api/message'
+import { getUnreadCount, createUnreadEventSource } from '../api/message'
+import { useUserStore } from '../stores/user'
 
 let originalTitle = document.title
 let timer = null
@@ -38,7 +39,9 @@ const stopBlink = () => {
 
 // 检查未读消息
 export const useNotification = () => {
+    const userStore = useUserStore()
     const unreadCount = ref(0)
+    const eventSource = ref(null)
 
     const checkUnread = async () => {
         try {
@@ -46,7 +49,6 @@ export const useNotification = () => {
             const newCount = response.data
 
             if (newCount > unreadCount.value && newCount > 0) {
-                // 有新消息，闪烁标题
                 blinkTitle()
             }
 
@@ -56,25 +58,59 @@ export const useNotification = () => {
         }
     }
 
+    const openSSE = () => {
+        if (!userStore.token || eventSource.value) {
+            return
+        }
+
+        try {
+            const source = createUnreadEventSource(userStore.token)
+
+            source.addEventListener('unread', (event) => {
+                const newCount = Number(event.data)
+                if (newCount > unreadCount.value && newCount > 0) {
+                    blinkTitle()
+                }
+                unreadCount.value = newCount
+            })
+
+            source.onopen = () => {
+                console.debug('SSE 未读数量已连接')
+            }
+
+            source.onerror = (event) => {
+                console.error('SSE 未读数量连接错误:', event, 'readyState=', source.readyState)
+                if (source.readyState === EventSource.CLOSED) {
+                    closeSSE()
+                    checkUnread()
+                }
+            }
+
+            eventSource.value = source
+        } catch (error) {
+            console.error('创建 SSE 失败:', error)
+            checkUnread()
+        }
+    }
+
+    const closeSSE = () => {
+        if (eventSource.value) {
+            eventSource.value.close()
+            eventSource.value = null
+        }
+    }
+
     const startPolling = () => {
-        checkUnread()
+        openSSE()
     }
 
     const stopPolling = () => {
         stopBlink()
+        closeSSE()
     }
-
-    // 页面获得焦点时停止闪烁并刷新一次未读
-    const onFocus = () => {
-        stopBlink()
-        checkUnread()
-    }
-
-    window.addEventListener('focus', onFocus)
 
     onUnmounted(() => {
         stopPolling()
-        window.removeEventListener('focus', onFocus)
     })
 
     return {

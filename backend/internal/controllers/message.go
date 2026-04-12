@@ -2,11 +2,15 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"book-trading/backend/internal/database"
 	"book-trading/backend/internal/models"
+	"book-trading/backend/internal/sse"
+	"book-trading/backend/internal/utils"
 	"book-trading/backend/internal/ws"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +42,22 @@ func createMessage(fromUserID, toUserID uint, content string) (*models.Message, 
 	updateConversation(toUserID, fromUserID, content, true)
 
 	database.DB.Preload("FromUser").First(&message, message.ID)
+	notifyUnreadCount(toUserID)
 	return &message, nil
+}
+
+func getTotalUnreadCount(userID uint) int64 {
+	var totalUnread int64
+	database.DB.Model(&models.Conversation{}).
+		Where("user_id = ?", userID).
+		Select("COALESCE(SUM(unread_count), 0)").
+		Scan(&totalUnread)
+	return totalUnread
+}
+
+func notifyUnreadCount(userID uint) {
+	totalUnread := getTotalUnreadCount(userID)
+	sse.DefaultManager.Send(userID, int(totalUnread))
 }
 
 // SendMessage 发送消息
@@ -220,6 +239,8 @@ func GetConversation(c *gin.Context) {
 		Where("user_id = ? AND other_user_id = ?", currentUserID, otherUserID).
 		Update("unread_count", 0)
 
+	notifyUnreadCount(currentUserID.(uint))
+
 	c.JSON(http.StatusOK, models.Response{
 		Code:    0,
 		Message: "success",
@@ -304,4 +325,73 @@ func GetUnreadCount(c *gin.Context) {
 		Message: "success",
 		Data:    totalUnread,
 	})
+}
+
+func SubscribeUnreadSSE(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		authHeader := c.GetHeader("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, models.Response{
+			Code:    401,
+			Message: "未提供认证令牌",
+			Data:    nil,
+		})
+		return
+	}
+
+	claims, err := utils.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, models.Response{
+			Code:    401,
+			Message: "无效的认证令牌: " + err.Error(),
+			Data:    nil,
+		})
+		return
+	}
+
+	userID := claims.UserID
+
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Code:    500,
+			Message: "当前环境不支持 SSE",
+			Data:    nil,
+		})
+		return
+	}
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.WriteHeader(http.StatusOK)
+
+	ch := sse.DefaultManager.Register(userID)
+	defer sse.DefaultManager.Unregister(userID, ch)
+
+	// 首次发送当前未读数量
+	initialCount := getTotalUnreadCount(userID)
+	fmt.Fprintf(c.Writer, "event: unread\ndata: %d\n\n", initialCount)
+	flusher.Flush()
+
+	ctx := c.Request.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case count, ok := <-ch:
+			if !ok {
+				return
+			}
+			fmt.Fprintf(c.Writer, "event: unread\ndata: %d\n\n", count)
+			flusher.Flush()
+		}
+	}
 }

@@ -10,6 +10,12 @@ export const getUnreadCount = () => {
     return request.get('/messages/unread')
 }
 
+// 订阅未读消息数量更新
+export const createUnreadEventSource = (token) => {
+    const url = `/api/messages/unread/stream?token=${encodeURIComponent(token)}`
+    return new EventSource(url)
+}
+
 // 获取对话列表
 export const getConversationList = () => {
     return request.get('/messages/conversations')

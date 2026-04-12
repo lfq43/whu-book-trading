@@ -3,6 +3,7 @@ import { ElMessage } from 'element-plus'
 //axios用于使用js语句发送http请求
 //请求方法返回promise对象，获取promise对象里的数据时需要 const 数据 = await 请求api函数
 import { useUserStore } from '../stores/user'
+import router from "../router/index.js";
 
 // 创建 axios 实例
 const request = axios.create({

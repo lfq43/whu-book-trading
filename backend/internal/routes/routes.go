@@ -22,6 +22,7 @@ func SetupRoutes(r *gin.Engine) {
 
 		// WebSocket 聊天
 		api.GET("/ws", controllers.Websocket)
+		api.GET("/messages/unread/stream", controllers.SubscribeUnreadSSE)
 
 		// 批次公开路由
 		api.GET("/batches", controllers.GetBatchList)
