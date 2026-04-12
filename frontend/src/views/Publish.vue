@@ -78,24 +78,6 @@
       </el-form>
     </el-card>
 
-    <!-- 预览 -->
-    <el-card v-if="form.title" class="preview-card">
-      <template #header>
-        <span>📱 预览效果</span>
-      </template>
-      <div class="preview">
-        <h3>{{ form.title }}</h3>
-        <div class="preview-books">
-          <div v-for="(name, idx) in form.book_names" :key="idx" class="preview-book">
-            📖 {{ name || '未填写' }}
-          </div>
-        </div>
-        <div v-if="form.image" class="preview-image">
-          <img :src="form.image" alt="预览" />
-        </div>
-        <p class="preview-contact">📞 联系方式：{{ form.contact || '未填写' }}</p>
-      </div>
-    </el-card>
   </div>
 </template>
 
@@ -253,39 +235,4 @@ const resetForm = () => {
   margin-top: 4px;
 }
 
-.preview-card {
-  margin-top: 20px;
-  background: #fafafa;
-}
-
-.preview h3 {
-  margin: 0 0 15px 0;
-}
-
-.preview-books {
-  margin: 15px 0;
-  padding-left: 20px;
-}
-
-.preview-book {
-  padding: 4px 0;
-  color: #333;
-}
-
-.preview-image {
-  margin: 15px 0;
-}
-
-.preview-image img {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 8px;
-}
-
-.preview-contact {
-  color: #409eff;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #eee;
-}
 </style>

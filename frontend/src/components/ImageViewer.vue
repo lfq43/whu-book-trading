@@ -90,7 +90,7 @@ const props = defineProps({
   },
   height: {
     type: String,
-    default: '150px'
+    default: '100%'
   },
   previewList: {
     type: Array,

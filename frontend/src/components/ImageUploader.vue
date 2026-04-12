@@ -54,6 +54,49 @@ const fileInput = ref(null)
 const uploading = ref(false)
 const imageUrl = ref(props.modelValue)
 
+// 压缩图片，保留 GIF 原始文件以避免破坏动图
+const compressImage = async (file) => {
+  if (file.type === 'image/gif') {
+    return file
+  }
+
+  const imageBitmap = await createImageBitmap(file)
+  let { width, height } = imageBitmap
+  const maxSize = 1920
+
+  if (width > maxSize || height > maxSize) {
+    if (width > height) {
+      height = Math.round((height * maxSize) / width)
+      width = maxSize
+    } else {
+      width = Math.round((width * maxSize) / height)
+      height = maxSize
+    }
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(imageBitmap, 0, 0, width, height)
+  imageBitmap.close()
+
+  const outputType = file.type === 'image/png' ? 'image/png' : file.type
+  const quality = file.type === 'image/png' ? undefined : 0.8
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) {
+        resolve(result)
+      } else {
+        reject(new Error('压缩图片失败'))
+      }
+    }, outputType, quality)
+  })
+
+  return new File([blob], file.name, { type: blob.type })
+}
+
 // 触发文件选择
 const triggerUpload = () => {
   fileInput.value?.click()
@@ -79,8 +122,9 @@ const handleFileChange = async (event) => {
 
   uploading.value = true
   try {
-    // 上传图片到服务器
-    const response = await uploadImage(file)
+    // 压缩图片后上传
+    const compressedFile = await compressImage(file)
+    const response = await uploadImage(compressedFile)
     const url = response.data.url
 
     imageUrl.value = url
