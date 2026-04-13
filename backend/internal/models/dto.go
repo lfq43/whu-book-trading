@@ -8,6 +8,8 @@ type RegisterRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=50"` // 必填，显示用户名，3-50字符
 	Password string `json:"password" binding:"required,min=6"`        // 必填，至少6位
 	Email    string `json:"email" binding:"omitempty,email"`          // 可选，但如果填了必须是邮箱格式
+	// VerificationCode 用户收到的邮箱验证码（若填写邮箱则需提供）
+	VerificationCode string `json:"verification_code" binding:"omitempty,len=6"`
 }
 
 // LoginRequest 登录请求

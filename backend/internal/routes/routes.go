@@ -15,6 +15,7 @@ func SetupRoutes(r *gin.Engine) {
 		{
 			auth.POST("/register", controllers.Register)
 			auth.POST("/login", controllers.Login)
+			auth.POST("/send_verification_code", controllers.SendVerificationCode)
 		}
 
 		// 用户公开路由（查看个人空间）

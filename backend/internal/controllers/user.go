@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -24,6 +25,39 @@ func Register(c *gin.Context) {
 			Data:    nil,
 		})
 		return
+	}
+
+	// 如果填写了邮箱，则必须提供验证码并校验（5分钟有效）
+	if req.Email != "" {
+		if req.VerificationCode == "" {
+			c.JSON(http.StatusBadRequest, models.Response{
+				Code:    400,
+				Message: "请提供邮箱验证码",
+				Data:    nil,
+			})
+			return
+		}
+		ctx := context.Background()
+		key := "verify:" + req.Email
+		storedCode, err := database.RedisClient.Get(ctx, key).Result()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, models.Response{
+				Code:    400,
+				Message: "验证码无效或已过期",
+				Data:    nil,
+			})
+			return
+		}
+		if storedCode != req.VerificationCode {
+			c.JSON(http.StatusBadRequest, models.Response{
+				Code:    400,
+				Message: "验证码错误",
+				Data:    nil,
+			})
+			return
+		}
+		// 验证通过后删除验证码
+		_ = database.RedisClient.Del(ctx, key)
 	}
 
 	// 2. 检查账号名是否已被使用
@@ -55,6 +89,7 @@ func Register(c *gin.Context) {
 		Username: req.Username,
 		Password: hashedPassword,
 		Email:    req.Email,
+		Avatar:   "/public/defaultavatar.jpg",
 	}
 
 	// 5. 保存到数据库

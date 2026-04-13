@@ -87,6 +87,11 @@ export const register = (data) => {
     return request.post('/auth/register', data)
 }
 
+// 发送邮箱验证码
+export const sendVerificationCode = (data) => {
+    return request.post('/auth/send_verification_code', data)
+}
+
 // 登录 API
 export const login = (data) => {
     return request.post('/auth/login', data)

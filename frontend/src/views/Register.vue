@@ -55,6 +55,26 @@
               v-model="form.email"
               placeholder="请输入邮箱（选填）"
               prefix-icon="Message"
+          >
+            <template #append>
+              <el-button
+                type="primary"
+                size="small"
+                :loading="codeSending"
+                :disabled="!form.email || countDown > 0"
+                @click="handleSendCode"
+              >
+                {{ countDown > 0 ? `重新发送(${countDown}s)` : '发送验证码' }}
+              </el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="邮箱验证码" prop="verificationCode">
+          <el-input
+              v-model="form.verificationCode"
+              placeholder="请输入验证码"
+              prefix-icon="Lock"
           />
         </el-form-item>
 
@@ -72,14 +92,17 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { register } from '../api/user'
+import { register, sendVerificationCode } from '../api/user'
 
 const router = useRouter()
 const formRef = ref(null)
 const loading = ref(false)
+const codeSending = ref(false)
+const countDown = ref(0)
+let timer = null
 
 // 表单数据
 const form = reactive({
@@ -87,7 +110,8 @@ const form = reactive({
   username: '',
   password: '',
   confirmPassword: '',
-  email: ''
+  email: '',
+  verificationCode: ''
 })
 
 // 自定义验证函数：确认密码
@@ -119,8 +143,50 @@ const rules = {
   ],
   email: [
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  verificationCode: [
+    { required: false, message: '请输入验证码', trigger: 'blur' },
+    { len: 6, message: '验证码长度为 6 位', trigger: 'blur' }
   ]
 }
+
+const startCountdown = () => {
+  countDown.value = 60
+  timer = setInterval(() => {
+    countDown.value -= 1
+    if (countDown.value <= 0) {
+      clearInterval(timer)
+      timer = null
+    }
+  }, 1000)
+}
+
+const handleSendCode = async () => {
+  if (!form.email) {
+    ElMessage.warning('请先填写邮箱')
+    return
+  }
+  if (countDown.value > 0) {
+    return
+  }
+
+  codeSending.value = true
+  try {
+    await sendVerificationCode({ email: form.email })
+    ElMessage.success('验证码已发送，请查收邮箱')
+    startCountdown()
+  } catch (error) {
+    ElMessage.error(error.message || '发送验证码失败')
+  } finally {
+    codeSending.value = false
+  }
+}
+
+onUnmounted(() => {
+  if (timer) {
+    clearInterval(timer)
+  }
+})
 
 // 注册处理
 const handleRegister = async () => {
@@ -129,6 +195,11 @@ const handleRegister = async () => {
   await formRef.value.validate(async (valid) => {
     if (!valid) return
 
+    if (form.email && !form.verificationCode) {
+      ElMessage.warning('请输入邮箱验证码')
+      return
+    }
+
     loading.value = true
     try {
       // 2. 调用注册 API（注意：不需要传 confirmPassword）
@@ -136,7 +207,8 @@ const handleRegister = async () => {
         account: form.account,
         username: form.username,
         password: form.password,
-        email: form.email
+        email: form.email,
+        verification_code: form.verificationCode
       })
 
       ElMessage.success('注册成功！请登录')

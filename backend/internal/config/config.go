@@ -20,6 +20,13 @@ type Config struct {
 
 	JWTSecret string
 
+	// SMTP 配置（用于发送邮箱验证码）
+	SMTPHost string
+	SMTPPort string
+	SMTPUser string
+	SMTPPass string
+	SMTPFrom string
+
 	AdminAccount  string
 	AdminPassword string
 
@@ -51,6 +58,12 @@ func LoadConfig() {
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
 
 		ServerPort: getEnv("SERVER_PORT", "8082"),
+		// SMTP 默认不填，建议在 .env 中配置：SMTP_HOST、SMTP_PORT、SMTP_USER、SMTP_PASS、SMTP_FROM
+		SMTPHost: getEnv("SMTP_HOST", "smtp.163.com"),
+		SMTPPort: getEnv("SMTP_PORT", "465"),
+		SMTPUser: getEnv("SMTP_USER", ""),
+		SMTPPass: getEnv("SMTP_PASS", ""),
+		SMTPFrom: getEnv("SMTP_FROM", getEnv("SMTP_USER", "")),
 	}
 }
 
