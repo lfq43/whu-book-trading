@@ -61,8 +61,8 @@ func LoadConfig() {
 		// SMTP 默认不填，建议在 .env 中配置：SMTP_HOST、SMTP_PORT、SMTP_USER、SMTP_PASS、SMTP_FROM
 		SMTPHost: getEnv("SMTP_HOST", "smtp.163.com"),
 		SMTPPort: getEnv("SMTP_PORT", "465"),
-		SMTPUser: getEnv("SMTP_USER", ""),
-		SMTPPass: getEnv("SMTP_PASS", ""),
+		SMTPUser: getEnv("SMTP_USER", "17846560918@163.com"),
+		SMTPPass: getEnv("SMTP_PASS", "SKgLTPeTynDYMw9S"),
 		SMTPFrom: getEnv("SMTP_FROM", getEnv("SMTP_USER", "")),
 	}
 }

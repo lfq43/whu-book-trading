@@ -80,14 +80,12 @@ func Websocket(c *gin.Context) {
 		if err := json.Unmarshal(msg, &packet); err != nil {
 			continue
 		}
-
 		switch packet.Type {
 		case "send_message":
 			var payload wsSendMessagePayload
 			if err := json.Unmarshal(packet.Data, &payload); err != nil {
 				continue
 			}
-
 			message, err := createMessage(claims.UserID, payload.ToUserID, payload.Content)
 			if err != nil {
 				client.Send <- marshal(gin.H{"type": "error", "message": err.Error()})

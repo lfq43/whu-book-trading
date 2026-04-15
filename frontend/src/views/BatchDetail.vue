@@ -121,7 +121,6 @@
     <ChatWindow
         v-model="chatVisible"
         :other-user="batch?.user"
-        @message-sent="onMessageSent"
     />
   </div>
 </template>
@@ -261,8 +260,6 @@ const openChat = () => {
   }
   chatVisible.value = true
 }
-
-const onMessageSent = () => {}
 
 onMounted(() => {
   loadDetail()

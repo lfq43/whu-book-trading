@@ -24,9 +24,9 @@ export const getConversationList = () => {
 // 获取与某人的聊天记录（滑动加载）
 // beforeId: 查询比这个ID更旧的消息，传0或不传表示获取最新消息
 export const getConversation = (userId, beforeId = 0, limit = 20) => {
-    const params = { limit }
+    const params = { limit }//对象属性简写语法
     if (beforeId > 0) {
-        params.before_id = beforeId
+        params.before_id = beforeId//也是一种简写语法，简单创建属性
     }
     return request.get(`/messages/conversation/${userId}`, { params })
 }

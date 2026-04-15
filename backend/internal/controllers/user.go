@@ -132,12 +132,13 @@ func Login(c *gin.Context) {
 	// 2. 检查是否是配置里的管理员账号
 	if req.Account == config.AppConfig.AdminAccount && req.Password == config.AppConfig.AdminPassword {
 		adminUser := models.User{
-			ID:       0,
+			ID:       4,
 			Account:  config.AppConfig.AdminAccount,
 			Username: "管理员",
 			IsAdmin:  true,
 		}
-		token, err := utils.GenerateToken(0, "管理员", true)
+
+		token, err := utils.GenerateToken(4, "管理员", true)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.Response{
 				Code:    500,

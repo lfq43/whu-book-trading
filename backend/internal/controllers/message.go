@@ -272,7 +272,6 @@ func GetConversationList(c *gin.Context) {
 		Preload("OtherUser").
 		Order("last_time DESC").
 		Find(&conversations).Error
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Code:    500,

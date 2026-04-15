@@ -1,8 +1,8 @@
 <template>
   <div class="publish-container">
     <div class="header">
-      <h1>📦 发布一批书</h1>
-      <p>填写书名列表，卖出一本勾一本</p>
+      <h1>📦发布一批书</h1>
+      <p>请填写书名列表</p>
     </div>
 
     <el-card class="publish-card">
@@ -39,7 +39,7 @@
               添加一本书
             </el-button>
           </div>
-          <div class="form-tip">列出每一本书的名字，买家可以按本购买</div>
+          <div class="form-tip">列出每一本书的名字</div>
         </el-form-item>
 
         <el-form-item label="描述" prop="description">
@@ -58,7 +58,7 @@
               :batch-id="batchId"
               @upload-success="onUploadSuccess"
           />
-          <div class="form-tip">支持 JPG、PNG、GIF 格式，大小不超过 5MB。先发布，后上传图片</div>
+          <div class="form-tip">支持 JPG、PNG、GIF 格式，大小不超过 5MB</div>
         </el-form-item>
 
         <el-form-item label="联系方式" prop="contact">
@@ -66,7 +66,7 @@
               v-model="form.contact"
               placeholder="微信号 / QQ号 / 手机号"
           />
-          <div class="form-tip">买家会通过这个联系方式找到你</div>
+          <div class="form-tip">买家会通过这个联系方式联系你</div>
         </el-form-item>
 
         <el-form-item>
