@@ -35,5 +35,5 @@ func main() {
 	})
 	// 启动服务器
 	log.Printf("Server starting on port %s", config.AppConfig.ServerPort)
-	r.Run("127.0.0.1:" + config.AppConfig.ServerPort)
+	r.Run("0.0.0.0:" + config.AppConfig.ServerPort)
 }
