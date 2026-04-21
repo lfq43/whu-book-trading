@@ -95,7 +95,8 @@ services:
     depends_on:
       - mysql
       - redis
-
+    volumes:
+      - ./backend/uploads:/app/uploads
   # 新增：前端服务 (使用 Nginx 生产部署)
   frontend:
     build:

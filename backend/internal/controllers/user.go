@@ -89,7 +89,7 @@ func Register(c *gin.Context) {
 		Username: req.Username,
 		Password: hashedPassword,
 		Email:    req.Email,
-		Avatar:   "/public/defaultavatar.jpg",
+		Avatar:   "/defaultavatar.jpg",
 	}
 
 	// 5. 保存到数据库

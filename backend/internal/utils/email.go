@@ -18,7 +18,7 @@ func SendMail(to, subject, body string) error {
 	port := cfg.SMTPPort
 	addr := fmt.Sprintf("%s:%s", host, port)
 
-	from := "WHU书籍交易网站"
+	fromHeader := fmt.Sprintf("WHU书籍交易网站 <%s>",cfg.SMTPUser)
 
 	// 【修复1】163 强制要求 MAIL FROM 必须是登录邮箱本身
 	// 如果你的服务器允许代发，这里请改为 from
@@ -26,7 +26,7 @@ func SendMail(to, subject, body string) error {
 
 	// 构建邮件内容
 	msg := ""
-	msg += fmt.Sprintf("From: %s\r\n", from)
+	msg += fmt.Sprintf("From: %s\r\n", fromHeader)
 	msg += fmt.Sprintf("To: %s\r\n", to)
 	msg += fmt.Sprintf("Subject: %s\r\n", subject)
 	msg += fmt.Sprintf("Message-ID: <%s@%s>\r\n", generateMessageID(), host) // 【修复3】增加 Message-ID

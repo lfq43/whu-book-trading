@@ -128,6 +128,18 @@ const searchKeyword = ref('')
 // 搜索防抖
 let searchTimer = null
 
+// 解析书名列表（后端返回的是 JSON 字符串）
+const getBookNames = (batch) => {
+  if (!batch.book_names) return []
+  try {
+    return typeof batch.book_names === 'string'
+        ? JSON.parse(batch.book_names)
+        : batch.book_names
+  } catch {
+    return []
+  }
+}
+
 // 状态文本
 const getStatusText = (status) => {
   const map = {
