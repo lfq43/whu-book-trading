@@ -61,8 +61,8 @@ func LoadConfig() {
 
 		SMTPHost: getEnv("SMTP_HOST", "smtp.163.com"),
 		SMTPPort: getEnv("SMTP_PORT", "465"),
-		SMTPUser: getEnv("SMTP_USER", "17846560918@163.com"),
-		SMTPPass: getEnv("SMTP_PASS", "SKgLTPeTynDYMw9S"),
+		SMTPUser: getEnv("SMTP_USER", ""),
+		SMTPPass: getEnv("SMTP_PASS", ""),
 		SMTPFrom: getEnv("SMTP_FROM", getEnv("SMTP_USER", "")),
 	}
 }
