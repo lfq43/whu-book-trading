@@ -321,10 +321,6 @@ func GetBatchList(c *gin.Context) {
 		)
 	}
 
-	// 统计总数
-	var total int64
-	query.Count(&total)
-
 	// 分页查询（按更新时间倒序，有未售出书籍的都在这里）
 	var batches []models.Batch
 	offset := (page - 1) * pageSize
@@ -332,6 +328,10 @@ func GetBatchList(c *gin.Context) {
 		Offset(offset).
 		Limit(pageSize).
 		Find(&batches)
+
+	// 统计总数
+	var total int64
+	query.Count(&total)
 
 	c.JSON(http.StatusOK, models.Response{
 		Code:    0,

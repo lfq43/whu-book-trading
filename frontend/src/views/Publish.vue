@@ -2,7 +2,7 @@
   <div class="publish-container">
     <div class="header">
       <h1>📦 发布一批书</h1>
-      <p>填写书名列表，卖出一本勾一本</p>
+      <p>填写书名列表</p>
     </div>
 
     <el-card class="publish-card">
@@ -38,8 +38,23 @@
               <el-icon><Plus /></el-icon>
               添加一本书
             </el-button>
+            <el-button type="primary" plain @click="quick_add = true" style="margin-top: 10px">
+              <el-icon><Plus /></el-icon>
+              快捷添加多本书名
+            </el-button>
+            <el-button type="primary" plain v-if="quick_add" @click="addBooks" style="margin-top: 10px">
+              <el-icon><Check /></el-icon>
+              提交
+            </el-button>
+            <el-input
+                v-if="quick_add"
+                v-model="booknames"
+                type="textarea"
+                :rows="5"
+                placeholder="书名之间用空格分隔"
+            />
           </div>
-          <div class="form-tip">列出每一本书的名字，买家可以按本购买</div>
+          <div class="form-tip">列出每一本书的名字</div>
         </el-form-item>
 
         <el-form-item label="描述" prop="description">
@@ -47,18 +62,19 @@
               v-model="form.description"
               type="textarea"
               :rows="4"
-              placeholder="补充说明：使用情况、是否有笔记等"
+              placeholder="补充说明：书籍情况、是否有笔记、交接书籍方式等"
           />
         </el-form-item>
 
         <!-- 图片上传组件（修改后） -->
         <el-form-item label="图片">
           <ImageUploader
-              v-model="form.image"
-              :batch-id="batchId"
-              @upload-success="onUploadSuccess"
+              v-model="form.images"
+              :max-count="6"
+              @upload-success="onImagesUploaded"
+              ref="imageUploaderRef"
           />
-          <div class="form-tip">支持 JPG、PNG、GIF 格式，大小不超过 5MB。先发布，后上传图片</div>
+          <div class="form-tip">支持多张图片，最多6张，点击图片可放大预览</div>
         </el-form-item>
 
         <el-form-item label="联系方式" prop="contact">
@@ -85,7 +101,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import {Plus, Delete, Check} from '@element-plus/icons-vue'
 import { createBatch, updateBatchImage } from '../api/batch'
 import ImageUploader from '../components/ImageUploader.vue'
 
@@ -93,12 +109,14 @@ const router = useRouter()
 const formRef = ref(null)
 const submitting = ref(false)
 const batchId = ref(null)  // 存储创建后的批次ID
+const booknames = ref('')
+const quick_add = ref(false)
 
 const form = reactive({
   title: '出书出书',
-  book_names: ['', ''],
+  book_names: [''],
   description: '',
-  image: '',
+  image: [],
   contact: ''
 })
 
@@ -128,11 +146,30 @@ const rules = {
 }
 
 const addBook = () => {
-  if (form.book_names.length >= 50) {
+  if (form.book_names.length > 50) {
     ElMessage.warning('最多添加50本书')
     return
   }
   form.book_names.push('')
+}
+
+const addBooks = () => {
+  const names = booknames.value
+      .trim()
+      .split(/\s+/)
+      .filter(name => name !== '')
+  if (names.length + form.book_names.length > 50) {
+    ElMessage.warning('最多添加50本书')
+    return
+  }
+  if (form.book_names.length === 1 && form.book_names[0] === '' && names.length !== 0) {
+    form.book_names.shift()
+  }
+  for (const book of names) {
+    form.book_names.push(book)
+  }
+  booknames.value = ''
+  quick_add.value = false
 }
 
 const removeBook = (index) => {
@@ -162,10 +199,10 @@ const submitPublish = async () => {
       batchId.value = response.data.id
       ElMessage.success('发布成功！正在上传图片...')
       // 第二步：如果有图片，上传图片并更新批次
-      if (form.image) {
+      if (form.images) {
         // 图片已经通过 ImageUploader 上传了，URL 已经存在
         // 只需要更新批次的 image 字段
-        await updateBatchImage(batchId.value, form.image)
+        await updateBatchImage(batchId.value, form.images)
         ElMessage.success('图片上传成功')
       }
 
@@ -178,19 +215,17 @@ const submitPublish = async () => {
   })
 }
 
-const onUploadSuccess = (url) => {
-  form.image = url
-  // 如果批次已经创建，立即更新
-  if (batchId.value) {
-    updateBatchImage(batchId.value, url)
-  }
+// 图片上传成功回调
+const onImagesUploaded = (urls) => {
+  form.images = urls
+  console.log('当前图片列表:', urls)
 }
 
 const resetForm = () => {
   form.title = ''
-  form.book_names = ['', '']
+  form.book_names = ['']
   form.description = ''
-  form.image = ''
+  form.image = []
   form.contact = ''
   batchId.value = null
 }
