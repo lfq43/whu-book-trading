@@ -116,7 +116,7 @@ const form = reactive({
   title: '出书出书',
   book_names: [''],
   description: '',
-  image: [],
+  images: [],
   contact: ''
 })
 
@@ -199,7 +199,7 @@ const submitPublish = async () => {
       batchId.value = response.data.id
       ElMessage.success('发布成功！正在上传图片...')
       // 第二步：如果有图片，上传图片并更新批次
-      if (form.images) {
+if (form.images && form.images.length > 0) {
         // 图片已经通过 ImageUploader 上传了，URL 已经存在
         // 只需要更新批次的 image 字段
         await updateBatchImage(batchId.value, form.images)
@@ -225,7 +225,7 @@ const resetForm = () => {
   form.title = ''
   form.book_names = ['']
   form.description = ''
-  form.image = []
+  form.images = []
   form.contact = ''
   batchId.value = null
 }

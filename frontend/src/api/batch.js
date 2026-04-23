@@ -34,6 +34,6 @@ export const deleteBatch = (id) => {
 }
 
 // 更新批次图片
-export const updateBatchImage = (batchId, imageUrl) => {
-    return request.put(`/batches/${batchId}/image`, { image: imageUrl })
+export const updateBatchImage = (batchId, imageUrls) => {
+    return request.put(`/batches/${batchId}/image`, { image: imageUrls })
 }

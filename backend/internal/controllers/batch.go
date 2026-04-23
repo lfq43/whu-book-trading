@@ -17,7 +17,7 @@ func CreateBatch(c *gin.Context) {
 	var req struct {
 		Title       string   `json:"title" binding:"required,min=2,max=200"`
 		Description string   `json:"description" binding:"max=2000"`
-		Image       string   `json:"image"`
+		Image       []string `json:"image"`
 		BookNames   []string `json:"book_names" binding:"required,min=1,max=50"`
 		Contact     string   `json:"contact" binding:"required,min=3,max=100"`
 	}
@@ -47,6 +47,12 @@ func CreateBatch(c *gin.Context) {
 	// 已售出列表初始为空
 	soldBookNamesJSON, _ := json.Marshal([]string{})
 
+	// 图片列表初始为空
+	imageJSON := []byte("[]")
+	if req.Image != nil {
+		imageJSON, _ = json.Marshal(req.Image)
+	}
+
 	// 确定初始状态
 	status := "available"
 	if len(req.BookNames) == 0 {
@@ -56,7 +62,7 @@ func CreateBatch(c *gin.Context) {
 	batch := models.Batch{
 		Title:         req.Title,
 		Description:   req.Description,
-		Image:         req.Image,
+		Image:         string(imageJSON),
 		BookNames:     string(bookNamesJSON),
 		SoldBookNames: string(soldBookNamesJSON),
 		Contact:       req.Contact,
@@ -258,7 +264,7 @@ func UpdateBatchImage(c *gin.Context) {
 	}
 
 	var req struct {
-		Image string `json:"image" binding:"required"`
+		Image []string `json:"image" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.Response{
@@ -280,7 +286,9 @@ func UpdateBatchImage(c *gin.Context) {
 		return
 	}
 
-	batch.Image = req.Image
+	// 序列化图片URL数组为JSON字符串
+	imageJSON, _ := json.Marshal(req.Image)
+	batch.Image = string(imageJSON)
 	database.DB.Save(&batch)
 
 	c.JSON(http.StatusOK, models.Response{

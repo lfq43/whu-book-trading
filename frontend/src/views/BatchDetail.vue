@@ -28,10 +28,11 @@
       </div>
 
       <!-- 图片区域 - 使用图片预览组件 -->
-      <div v-if="batch.image" class="detail-image">
+      <div v-if="imageList.length > 0" class="detail-image">
         <ImageViewer
-            :src="batch.image"
+            :src="imageList[0]"
             :title="batch.title"
+            :preview-list="imageList"
             width="30%"
             height="30%"
         />
@@ -172,6 +173,19 @@ const soldBookNames = computed(() => {
         ? JSON.parse(batch.value.sold_book_names)
         : batch.value.sold_book_names
     return names || []
+  } catch {
+    return []
+  }
+})
+
+// 解析图片列表
+const imageList = computed(() => {
+  if (!batch.value?.image) return []
+  try {
+    const images = typeof batch.value.image === 'string'
+        ? JSON.parse(batch.value.image)
+        : batch.value.image
+    return images || []
   } catch {
     return []
   }

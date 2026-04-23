@@ -39,7 +39,7 @@
           <!-- 图片区域 - 使用图片预览组件 -->
           <div class="batch-image">
             <ImageViewer
-                :src="batch.image || '/placeholder.png'"
+                :src="getFirstImage(batch)"
                 :title="batch.title"
                 width="100%"
                 height="120px"
@@ -137,6 +137,19 @@ const getBookNames = (batch) => {
         : batch.book_names
   } catch {
     return []
+  }
+}
+
+// 获取第一张图片URL
+const getFirstImage = (batch) => {
+  if (!batch.image) return '/placeholder.png'
+  try {
+    const images = typeof batch.image === 'string'
+        ? JSON.parse(batch.image)
+        : batch.image
+    return images.length > 0 ? images[0] : '/placeholder.png'
+  } catch {
+    return '/placeholder.png'
   }
 }
 
