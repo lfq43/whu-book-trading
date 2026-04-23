@@ -58,7 +58,7 @@ func LoadConfig() {
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
 
 		ServerPort: getEnv("SERVER_PORT", "8082"),
-		// SMTP 默认不填，建议在 .env 中配置：SMTP_HOST、SMTP_PORT、SMTP_USER、SMTP_PASS、SMTP_FROM
+
 		SMTPHost: getEnv("SMTP_HOST", "smtp.163.com"),
 		SMTPPort: getEnv("SMTP_PORT", "465"),
 		SMTPUser: getEnv("SMTP_USER", ""),

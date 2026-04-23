@@ -1,7 +1,7 @@
 <template>
   <el-drawer
       v-model="visible"
-      :title="`与 ${otherUser?.username} 聊天`"
+      :title="titleText"
       direction="rtl"
       size="400px"
       @close="handleClose"
@@ -76,7 +76,9 @@ const emit = defineEmits(['update:modelValue', 'message-sent'])
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.id)
-
+const titleText = computed(() => {
+  return props.otherUser?.id === 4 ? `向管理员反馈` : `与 ${ props.otherUser?.username } 聊天`
+})
 // 状态
 const visible = ref(false)
 const messages = ref([])
@@ -247,7 +249,7 @@ const send = async () => {
     ElMessage.error('聊天连接未就绪，请稍后重试')
     return
   }
-
+  console.log(props.otherUser)
   const payload = {
     type: 'send_message',
     data: {
@@ -255,7 +257,7 @@ const send = async () => {
       content: inputContent.value.trim(),
     },
   }
-
+  console.log(payload)
   socket.value.send(JSON.stringify(payload))
   inputContent.value = ''
 }

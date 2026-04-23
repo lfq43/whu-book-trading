@@ -3,7 +3,10 @@ package utils
 import (
 	"crypto/tls"
 	"fmt"
+	"math/rand"
+	"net"
 	"net/smtp"
+	"time"
 
 	"book-trading/backend/internal/config"
 )
@@ -15,16 +18,18 @@ func SendMail(to, subject, body string) error {
 	port := cfg.SMTPPort
 	addr := fmt.Sprintf("%s:%s", host, port)
 
-	from := cfg.SMTPFrom
-	if from == "" {
-		from = cfg.SMTPUser
-	}
+	fromHeader := fmt.Sprintf("WHU书籍交易网站 <%s>",cfg.SMTPUser)
 
-	// 构建邮件内容（简单 HTML）
+	// 【修复1】163 强制要求 MAIL FROM 必须是登录邮箱本身
+	// 如果你的服务器允许代发，这里请改为 from
+	mailFrom := cfg.SMTPUser
+
+	// 构建邮件内容
 	msg := ""
-	msg += fmt.Sprintf("From: %s\r\n", from)
+	msg += fmt.Sprintf("From: %s\r\n", fromHeader)
 	msg += fmt.Sprintf("To: %s\r\n", to)
 	msg += fmt.Sprintf("Subject: %s\r\n", subject)
+	msg += fmt.Sprintf("Message-ID: <%s@%s>\r\n", generateMessageID(), host) // 【修复3】增加 Message-ID
 	msg += "MIME-Version: 1.0\r\n"
 	msg += "Content-Type: text/html; charset=\"utf-8\"\r\n"
 	msg += "\r\n"
@@ -32,13 +37,16 @@ func SendMail(to, subject, body string) error {
 
 	auth := smtp.PlainAuth("", cfg.SMTPUser, cfg.SMTPPass, host)
 
-	// 建立 TLS 连接（适用于 465 端口）
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: false,
 		ServerName:         host,
 	}
 
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	// 【修复2】设置连接超时
+	dialer := &net.Dialer{
+		Timeout: 10 * time.Second,
+	}
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -53,7 +61,7 @@ func SendMail(to, subject, body string) error {
 		return err
 	}
 
-	if err = client.Mail(cfg.SMTPUser); err != nil {
+	if err = client.Mail(mailFrom); err != nil {
 		return err
 	}
 	if err = client.Rcpt(to); err != nil {
@@ -74,4 +82,9 @@ func SendMail(to, subject, body string) error {
 	}
 
 	return client.Quit()
+}
+
+// 生成一个简单的唯一 Message-ID
+func generateMessageID() string {
+	return fmt.Sprintf("%d.%d", time.Now().UnixNano(), rand.Int63())
 }

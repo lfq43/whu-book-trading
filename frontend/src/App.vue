@@ -3,7 +3,7 @@
     <nav class="navbar">
       <div class="nav-container">
         <div class="logo">
-          <router-link to="/">📗 二手书交易平台</router-link>
+          <router-link to="/">WHU书籍交易平台</router-link>
         </div>
         <div class="nav-links">
           <router-link to="/">浏览书籍</router-link>
@@ -37,10 +37,18 @@
             </el-dropdown>
           </div>
           <router-link v-else to="/login">登录/注册</router-link>
+          <router-link
+              v-if="userStore.isLoggedIn && !userStore.isAdmin"
+              to=""
+              @click.prevent="handleFeedback"
+          >
+            反馈
+          </router-link>
         </div>
       </div>
     </nav>
     <router-view />
+
 
     <!-- 消息列表抽屉 -->
     <MessageList v-model="messageListVisible" @select-chat="onSelectChat" />
@@ -54,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import {computed, ref, watch} from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {ArrowDown, ChatDotRound} from '@element-plus/icons-vue'
@@ -70,6 +78,12 @@ const { unreadCount, startPolling, stopPolling, checkUnread } = useNotification(
 const messageListVisible = ref(false)
 const chatVisible = ref(false)
 const selectedUser = ref(null)
+
+const currentUserId = computed(() => userStore.userInfo?.id)
+const adminId = 4
+const adminUser = {
+  id: adminId,
+}
 
 watch(
   () => userStore.isLoggedIn,
@@ -105,6 +119,14 @@ const handleMenuCommand = (command) => {
     router.push('/login')
   }
 }
+
+const handleFeedback = () => {
+  console.log('feedback')
+  chatVisible.value = false
+  selectedUser.value = adminUser
+  chatVisible.value = true
+}
+
 </script>
 
 <style>

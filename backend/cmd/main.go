@@ -8,6 +8,8 @@ import (
 	"book-trading/backend/internal/routes"
 
 	"github.com/gin-gonic/gin"
+	"path/filepath"
+        "runtime"
 )
 
 func main() {
@@ -25,7 +27,11 @@ func main() {
 	routes.SetupRoutes(r)
 
 	// 配置静态文件服务（用于访问上传的图片）
-	r.Static("/uploads", "./uploads")
+	_, filename, _, _ := runtime.Caller(0)
+	backendDir := filepath.Join(filepath.Dir(filename), "..")
+	uploadPath := filepath.Join(backendDir, "uploads")
+
+	r.Static("/uploads", uploadPath)
 
 	// 健康检查（公开接口）
 	r.GET("/health", func(c *gin.Context) {
@@ -35,5 +41,5 @@ func main() {
 	})
 	// 启动服务器
 	log.Printf("Server starting on port %s", config.AppConfig.ServerPort)
-	r.Run("127.0.0.1:" + config.AppConfig.ServerPort)
+	r.Run("0.0.0.0:" + config.AppConfig.ServerPort)
 }

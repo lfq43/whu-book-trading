@@ -9,7 +9,7 @@ type Batch struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
 	Title       string `gorm:"size:200;not null;index" json:"title"`
 	Description string `gorm:"type:text" json:"description"`
-	Image       string `gorm:"size:500" json:"image"`
+	Image       string `gorm:"type:json" json:"image"`
 
 	// 未售出的书籍列表（JSON 字符串数组）
 	BookNames string `gorm:"type:json" json:"book_names"` // ["高等数学", "大学英语"]

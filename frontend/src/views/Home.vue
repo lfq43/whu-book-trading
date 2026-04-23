@@ -140,18 +140,6 @@ const getBookNames = (batch) => {
   }
 }
 
-// 解析已售出书籍列表
-const getSoldBookNames = (batch) => {
-  if (!batch.sold_book_names) return []
-  try {
-    return typeof batch.sold_book_names === 'string'
-        ? JSON.parse(batch.sold_book_names)
-        : batch.sold_book_names
-  } catch {
-    return []
-  }
-}
-
 // 状态文本
 const getStatusText = (status) => {
   const map = {
@@ -252,7 +240,7 @@ onMounted(() => {
 
 /* 搜索栏 */
 .search-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #667eea 0%, #4b95a2 100%);
   margin: -20px -20px 20px -20px;
   padding: 40px 20px;
   border-radius: 0 0 20px 20px;
